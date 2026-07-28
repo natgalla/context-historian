@@ -269,30 +269,21 @@ git log --stat --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short --after="<summar
 
 Store the result as the **branch-local commits** set.
 
-**Default-branch check:** If `$default_branch` is non-empty and `$on_default_branch` is false, query commits on `origin/$default_branch` that are not already on the current branch. First verify whether the stored hash is an ancestor of the default branch:
+**Default-branch check:** If `$default_branch` is non-empty and `$on_default_branch` is false, find the point where the current branch diverged from the default branch and surface anything that has landed on the default branch since then:
 
 ```bash
-git merge-base --is-ancestor <stored-hash> origin/$default_branch 2>/dev/null
-# Exit 0 → hash is an ancestor → use precise range
-# Exit non-zero → fall back to date
+merge_base=$(git merge-base HEAD origin/$default_branch 2>/dev/null)
 ```
 
-Then run the appropriate query:
+If `merge-base` fails (unrelated histories, no common ancestor), skip this check. Otherwise query commits on `origin/$default_branch` reachable from the merge base but not from HEAD:
 
 ```bash
-# Case 1: stored hash is an ancestor of origin/$default_branch
 git log --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short \
-  <stored-hash>..origin/$default_branch \
-  --not HEAD
-
-# Case 2: stored hash is not an ancestor, or no stored hash — use date fallback
-git log --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short \
-  --after="<summary date>" \
-  origin/$default_branch \
+  $merge_base..origin/$default_branch \
   --not HEAD
 ```
 
-The `--not HEAD` excludes commits already reachable from the current branch so there is no overlap with the branch-local set. Store the result as the **default-branch commits** set.
+This is branch-aware and needs no stored hash or date math — it naturally answers "what landed on main that I haven't seen yet." Store the result as the **default-branch commits** set.
 
 If both sets are empty, skip this step entirely.
 
