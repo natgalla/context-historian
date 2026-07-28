@@ -223,7 +223,41 @@ If no `TIMELINE.md` exists, present just the most recent day file in full — do
 
 Check if the git state has diverged since the most recent summary was written.
 
-First, look for a stored HEAD hash in the day file — a line matching `<!-- HEAD: <hash> -->`. Use a single combined pass for both authorship and diff stats:
+First, silently fetch remote refs so the check reflects the true remote state. This never modifies the working tree or local branches:
+
+```bash
+git fetch --quiet 2>/dev/null
+```
+
+If the fetch fails (no remote configured, network unavailable), continue — the check will still work against any already-fetched remote refs.
+
+Next, detect the default remote branch:
+
+```bash
+# Preferred: read what origin/HEAD resolves to
+default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
+
+# Fall back to probing common names
+if [ -z "$default_branch" ]; then
+  git rev-parse --verify origin/main >/dev/null 2>&1 && default_branch="main"
+fi
+if [ -z "$default_branch" ]; then
+  git rev-parse --verify origin/master >/dev/null 2>&1 && default_branch="master"
+fi
+# If still empty, skip the default-branch check below
+```
+
+Determine whether the current branch is already the default branch (to avoid double-counting):
+
+```bash
+current_branch=$(git symbolic-ref --short HEAD 2>/dev/null)
+on_default_branch=false
+[ "$current_branch" = "$default_branch" ] && on_default_branch=true
+```
+
+If `git symbolic-ref` fails (detached HEAD), `current_branch` is empty, `on_default_branch` stays false, and the default-branch check proceeds normally.
+
+**Branch-local check:** Look for a stored HEAD hash in the day file — a line matching `<!-- HEAD: <hash> -->`. Use a single combined pass for both authorship and diff stats:
 
 ```bash
 # If a stored HEAD hash was found — most precise anchor:
@@ -233,13 +267,40 @@ git log --stat --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short <stored-hash>..H
 git log --stat --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short --after="<summary date>"
 ```
 
-If there are no new commits, skip this step.
+Store the result as the **branch-local commits** set.
 
-Partition the commits into two groups using the author email field (`%ae`):
+**Default-branch check:** If `$default_branch` is non-empty and `$on_default_branch` is false, query commits on `origin/$default_branch` that are not already on the current branch. First verify whether the stored hash is an ancestor of the default branch:
+
+```bash
+git merge-base --is-ancestor <stored-hash> origin/$default_branch 2>/dev/null
+# Exit 0 → hash is an ancestor → use precise range
+# Exit non-zero → fall back to date
+```
+
+Then run the appropriate query:
+
+```bash
+# Case 1: stored hash is an ancestor of origin/$default_branch
+git log --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short \
+  <stored-hash>..origin/$default_branch \
+  --not HEAD
+
+# Case 2: stored hash is not an ancestor, or no stored hash — use date fallback
+git log --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short \
+  --after="<summary date>" \
+  origin/$default_branch \
+  --not HEAD
+```
+
+The `--not HEAD` excludes commits already reachable from the current branch so there is no overlap with the branch-local set. Store the result as the **default-branch commits** set.
+
+If both sets are empty, skip this step entirely.
+
+Partition the branch-local commits into two groups using the author email field (`%ae`):
 - **Your changes** — commits where the author email matches `$(git config user.email)`
 - **Teammate changes** — all other authors, grouped by author name/email
 
-Synthesize a brief catch-up section — do not list raw hashes, summarize what actually changed:
+Synthesize a catch-up section — do not list raw hashes, summarize what actually changed. The branch-local section is the primary context for resuming your work; the default-branch section is a brief prose footnote:
 
 ```
 SINCE LAST SUMMARY (<date> → today)
@@ -247,11 +308,14 @@ SINCE LAST SUMMARY (<date> → today)
 Your changes:
 - <what changed, referencing files or behavior>
 
-Teammates:
+Teammates (this branch):     ← omit if no teammate commits on this branch
 - <Author Name>: <what they landed>
+
+Meanwhile on <default_branch>:     ← omit entirely if default-branch set is empty
+<one or two sentences summarizing what landed — no bullet structure>
 ```
 
-If all commits are by the same author, omit the grouping and just write a single "Since last summary" paragraph. Keep this section under 150 words.
+If all branch-local commits are by the same author, omit the author grouping and write a single "Your changes" paragraph. If the branch-local set is empty (no commits since the save), omit that group. Keep the entire section under 150 words.
 
 ---
 
