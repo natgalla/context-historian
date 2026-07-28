@@ -312,7 +312,7 @@ Teammates (this branch):     ← omit if no teammate commits on this branch
 - <Author Name>: <what they landed>
 
 Meanwhile on <default_branch>:     ← omit entirely if default-branch set is empty
-<one or two sentences summarizing what landed — no bullet structure>
+<one sentence — just enough to flag that something landed, e.g. "Sarah merged the auth refactor and two dependency bumps.">
 ```
 
 If all branch-local commits are by the same author, omit the author grouping and write a single "Your changes" paragraph. If the branch-local set is empty (no commits since the save), omit that group. Keep the entire section under 150 words.
