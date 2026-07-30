@@ -24,6 +24,9 @@ TODAY=$(date +%Y-%m-%d)
 DAY_FILE="$HISTORY_DIR/$TODAY.md"
 
 # Fire notification if transcript is large — prompt for manual save while context is live
+# Claude Code stores project transcripts at ~/.claude/projects/<key>/ where <key>
+# is the CWD with slashes replaced by dashes (an internal convention, not a public API).
+# If this path doesn't exist the transcript check is silently skipped — that's intentional.
 PROJECT_KEY=$(echo "$CWD" | tr '/' '-')
 TRANSCRIPT=$(ls -t "$HOME/.claude/projects/$PROJECT_KEY"/*.jsonl 2>/dev/null | head -1)
 if [ -n "$TRANSCRIPT" ]; then
@@ -43,7 +46,7 @@ fi
 mkdir -p "$HISTORY_DIR"
 
 # Find last HEAD hash — use previous auto-save or the last manual save
-LAST_FILE=$(ls "$HISTORY_DIR"/*.md 2>/dev/null | grep -v TIMELINE | sort | tail -1)
+LAST_FILE=$(find "$HISTORY_DIR" -maxdepth 1 -name "*.md" ! -name "TIMELINE.md" 2>/dev/null | sort | tail -1)
 LAST_HEAD=""
 if [ -f "$LAST_FILE" ]; then
   LAST_HEAD=$(grep '<!-- HEAD:' "$LAST_FILE" 2>/dev/null | sed 's/.*<!-- HEAD: \([a-f0-9]*\) -->/\1/')
@@ -63,9 +66,9 @@ CURRENT_BRANCH=$(git -C "$CWD" rev-parse --abbrev-ref HEAD 2>/dev/null)
   echo "# $PROJECT_NAME — $TODAY (auto-saved)"
   echo ""
   if [ -n "$CURRENT_BRANCH" ]; then
-    echo "**STATE** — Auto-saved at session end. Branch: \`$CURRENT_BRANCH\`. Run /historian to replace with a full context-aware summary."
+    echo "**STATE** — Auto-saved at session end. Branch: \`$CURRENT_BRANCH\`. Run /save to replace with a full context-aware summary."
   else
-    echo "**STATE** — Auto-saved at session end (no git). Run /historian to replace with a full context-aware summary."
+    echo "**STATE** — Auto-saved at session end (no git). Run /save to replace with a full context-aware summary."
   fi
   echo ""
   if [ -n "$GIT_LOG" ]; then
@@ -76,7 +79,7 @@ CURRENT_BRANCH=$(git -C "$CWD" rev-parse --abbrev-ref HEAD 2>/dev/null)
     echo ""
   fi
   echo "**OPEN**"
-  echo "- Auto-save only — run /historian to capture decisions and full session context."
+  echo "- Auto-save only — run /save to capture decisions and full session context."
   if [ -n "$CURRENT_HEAD" ]; then
     echo ""
     echo "<!-- HEAD: $CURRENT_HEAD -->"

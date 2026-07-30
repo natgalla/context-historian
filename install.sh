@@ -28,7 +28,9 @@ mkdir -p "$BACKUP_DIR"
 [[ -f "$DEST/agents/historian.md" ]]        && cp "$DEST/agents/historian.md"        "$BACKUP_DIR/historian.md"
 [[ -f "$DEST/agents/researcher.md" ]]      && cp "$DEST/agents/researcher.md"      "$BACKUP_DIR/researcher.md"
 [[ -d "$DEST/hooks" ]]                      && cp -r "$DEST/hooks"                   "$BACKUP_DIR/hooks"
+[[ -f "$DEST/settings.json" ]]              && cp "$DEST/settings.json"              "$BACKUP_DIR/settings.json"
 echo "Backups written to $BACKUP_DIR"
+echo "IMPORTANT: settings.json was backed up but NOT modified. Merge the hooks block shown below manually — copy-pasting over an existing file will lose your current config."
 echo ""
 
 # Install agent and commands

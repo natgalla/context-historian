@@ -88,6 +88,8 @@ The stored HEAD hash is used by LOAD Step 3 as a precise divergence anchor, avoi
 
 ### Step 5 — Write lasting decisions to memory
 
+Step 5 has three sub-steps: 5a retires stale memory entries, 5b writes new ones, 5c harvests bibliography sources.
+
 After the day file is written, carry lasting decisions into the memory system and retire any memories that have become stale. Skip this step entirely if the project is unidentified (generic basename).
 
 Derive the memory directory from the project root (same path used for git or pwd above):

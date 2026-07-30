@@ -2,7 +2,7 @@
 
 Claude Code loses context between sessions. You start fresh, re-explain what you were working on, and waste the first few minutes reconstructing state that was perfectly clear yesterday.
 
-context-historian solves this with three hooks and one agent:
+context-historian solves this with three hooks and two agents:
 
 - A **stop hook** auto-saves a git-based session summary when you exit, and nudges you to run `/save` if the session was substantial
 - A **session-start hook** leaves a sentinel so the system knows it's a fresh session
@@ -60,6 +60,7 @@ When a researcher finding backs a lasting decision, the historian tracks the sou
    ```
    DECISION-SOURCE: slug=<slug>
    ```
+   In practice, Claude Code emits this automatically when it decides a finding backs a lasting decision — you only type it yourself if you're coordinating manually.
 3. At `/save` time, the historian scans the session for matching marker/tag pairs and upserts entries into `BIBLIOGRAPHY.md` at the repo root.
 
 This step is **opt-in and graceful** — if no `DECISION-SOURCE:` markers are found in a session, it silently skips. Nothing breaks if you don't use it.
@@ -75,9 +76,9 @@ This step is **opt-in and graceful** — if no `DECISION-SOURCE:` markers are fo
 - **Sessions:** 2025-11-14, 2025-11-21
 ```
 
-To wire up the full pipeline, add the routing rules from `CLAUDE.md` to your `~/.claude/CLAUDE.md` — the installer does this automatically.
-
 ---
+
+> **Note:** The installer appends `CLAUDE.md` routing rules (historian, researcher, and bibliography conventions) to your `~/.claude/CLAUDE.md` automatically. For manual installs, see the manual install block below.
 
 ## Installation
 
@@ -144,11 +145,15 @@ The prompt-submit hook handles this automatically on session start. Use `/load` 
 
 ### BACKFILL — reconstruct history from git
 
-If you're starting with a project that has no history files, the historian agent can reconstruct day files from `git log`. Run it as:
+If you're starting with a project that has no history files, the historian agent can reconstruct day files from `git log`.
+
+Open Claude Code in any directory and say (addressing the historian agent directly):
 
 > "Backfill history for my projects under ~/code"
 
-The agent finds all git repos under the base directory you specify (defaults to `$HOME` — narrow it for speed), computes a start date 90 days back by default, and writes a day file for each active day. Existing session-saved files are never overwritten.
+The historian agent will find all git repos under the path you name, compute a start date, and write a day file for each active day.
+
+The agent defaults to `$HOME` as the base directory — narrow it for speed. Existing session-saved files are never overwritten.
 
 ---
 
@@ -156,4 +161,5 @@ The agent finds all git repos under the base directory you specify (defaults to 
 
 - **macOS** — the stop hook fires a system notification when the session transcript exceeds 300KB, prompting you to `/save` before context bloats. This uses `osascript` and is silently skipped on other platforms.
 - **Date compatibility** — BACKFILL computes "90 days ago" using both BSD (`date -v-90d`) and GNU (`date -d "90 days ago"`) syntax and picks whichever works.
-- **Dependencies** — `bash`, `git`, `jq`. All standard on macOS and most Linux distros.
+- **Dependencies** — `bash`, `git`, `jq`. `bash` and `git` are standard everywhere; `jq` must be installed separately on most Linux distros (`apt install jq` or `brew install jq` on macOS if not present).
+- **bash version** — the hooks use `[[ ]]` conditionals that require bash 4+. macOS ships bash 3.2; install a current bash via Homebrew (`brew install bash`) if hooks misbehave on macOS.

@@ -6,6 +6,8 @@ Use `/load` at the start of a session to surface the last summary. It reads the 
 ## Saving session history
 Delegate to the **historian** agent for `SAVE` (end of session, "wrap up", "I'm done for the day") and `BACKFILL` (reconstruct history from git) only. Do not summarize sessions inline — the agent exists to absorb that work out of main context.
 
+TIMELINE.md is maintained automatically by the historian during `/save` — it is not a separate command.
+
 ## Using the researcher agent
 
 Delegate factual questions that require reading documentation to the **researcher** agent — API behavior, library docs, version constraints, external specs, project ADRs. Do not answer from memory or fetch docs inline.
