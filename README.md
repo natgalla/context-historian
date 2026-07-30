@@ -1,16 +1,16 @@
 # context-historian
 
-Claude Code loses context between sessions. You start fresh, re-explain what you were working on, and waste the first few minutes reconstructing state that was perfectly clear yesterday.
+Open Claude Code in a project. Type your first message. Claude already knows what branch you're on, what was decided last session, what your teammate pushed this morning. You didn't do anything — it just knows.
 
-context-historian solves this with three hooks and two agents:
+That's what context-historian does. It captures session context as you work and injects it automatically at the start of every new session, keyed to the project you're in. Switch projects, get that project's context. No configuration, no "here's where we left off" preamble.
 
-- A **stop hook** fires a notification when your session transcript gets large, nudging you to run `/save` while context is still live
+Under the hood it uses three hooks and two agents:
+
 - A **session-start hook** leaves a sentinel so the system knows it's a fresh session
 - A **prompt-submit hook** intercepts your first message, reads the most recent summary for the current project, and injects it as context — automatically, before Claude sees your prompt
+- A **stop hook** fires a notification when your session transcript gets large, nudging you to run `/save` while context is still live
 - The **historian agent** does the real work: distilling sessions into structured summaries, loading and diffing them against the current git state, and reconstructing history from git log when no summary exists
 - The **researcher agent** finds answers in docs and the web rather than memory, and emits `CITE:` tags that feed the bibliography pipeline
-
-The net effect: every session starts with context. You don't have to think about it.
 
 ## How this fits with Claude Code
 
@@ -70,7 +70,9 @@ When you have multiple day files, the agent maintains a `TIMELINE.md` — a chro
 
 ## How sessions connect
 
-At the start of a session, the injected summary tells Claude where the project stands. At load time the agent also checks whether git has diverged since the summary was written — new commits by you or teammates get surfaced as a "since last summary" section, partitioned by author (resolved via `git config user.email`).
+When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project and injects it as context — silently, automatically. By the time Claude responds to your first message, it already knows where the project stands.
+
+The injected summary also includes a divergence check: the historian compares the saved HEAD against the current git state. New commits since the last save get surfaced as a "since last summary" section, partitioned by author (resolved via `git config user.email`) so you can see at a glance what you did vs what a teammate pushed.
 
 If no history file exists for a project, `/load` falls back to reconstructing a scaffold from `git log` — branch state, recent commits, and diff stats. This is a cold-start aid, not a real substitute: it can only surface what's in your commit messages. Decisions, reasoning, and open questions that never made it into a commit are invisible to it. Run `/save` at the end of sessions where those things matter.
 
