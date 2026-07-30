@@ -4,7 +4,7 @@ Claude Code loses context between sessions. You start fresh, re-explain what you
 
 context-historian solves this with three hooks and two agents:
 
-- A **stop hook** auto-saves a git-based session summary when you exit, and nudges you to run `/save` if the session was substantial
+- A **stop hook** fires a notification when your session transcript gets large, nudging you to run `/save` while context is still live
 - A **session-start hook** leaves a sentinel so the system knows it's a fresh session
 - A **prompt-submit hook** intercepts your first message, reads the most recent summary for the current project, and injects it as context — automatically, before Claude sees your prompt
 - The **historian agent** does the real work: distilling sessions into structured summaries, loading and diffing them against the current git state, and reconstructing history from git log when no summary exists
@@ -44,7 +44,19 @@ When you have multiple day files, the agent maintains a `TIMELINE.md` — a chro
 
 At the start of a session, the injected summary tells Claude where the project stands. At load time the agent also checks whether git has diverged since the summary was written — new commits by you or teammates get surfaced as a "since last summary" section, partitioned by author (resolved via `git config user.email`).
 
-If no history file exists for a project, `/load` falls back to reconstructing context from `git log` — commit messages and diff stats — and presents it in the same four-section format.
+If no history file exists for a project, `/load` falls back to reconstructing a scaffold from `git log` — branch state, recent commits, and diff stats. This is a cold-start aid, not a real substitute: it can only surface what's in your commit messages. Decisions, reasoning, and open questions that never made it into a commit are invisible to it. Run `/save` at the end of sessions where those things matter.
+
+---
+
+## Costs and tradeoffs
+
+**What's free:** context injection at session start is a local file read — no LLM call, no tokens. The stop hook notification is a bash script. Neither costs anything.
+
+**What costs tokens:** `/save` makes one LLM call — the historian agent reads the conversation and distills a structured summary. In practice this is a small, focused call, and it pays back quickly: a single `/save` typically costs less than the tokens you'd spend re-establishing context at the start of the next session.
+
+**`/save` is optional.** For short sessions with no lasting decisions, skip it — the git log scaffold at next session start is usually enough to re-orient. Run `/save` when decisions were made, when something was learned that git can't capture, or when the session was long enough that re-establishing context manually would be painful.
+
+**What git log can't do.** Git log reconstruction gives you orientation — branch, recent commits, what changed. It cannot give you context: why a decision was made, what was tried and abandoned, what's still open. Those only exist in the conversation. If your commit messages captured all of that, your git history would be bloated and unusual. `/save` is the right place for it.
 
 ---
 
@@ -109,6 +121,8 @@ After installing, add the hooks to `~/.claude/settings.json`:
 
 Then restart Claude Code.
 
+**Minimum install:** the `SessionStart` and `UserPromptSubmit` hooks handle automatic context injection. The `Stop` hook is optional — it only adds the size notification nudge.
+
 ### Manual install
 
 ```bash
@@ -133,7 +147,7 @@ Then add the settings.json snippet above.
 
 ### Automatic (no action required)
 
-History is injected at the start of every session. The stop hook writes a git-based auto-save when you exit. For short sessions this is all you need.
+History is injected at the start of every session. The stop hook watches transcript size and notifies you when a manual `/save` is worth running. For short sessions where no lasting decisions were made, git log reconstruction at the next session start is usually sufficient.
 
 ### `/save` — save the current session manually
 
