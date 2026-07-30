@@ -92,6 +92,8 @@ If no history file exists for a project, `/load` falls back to reconstructing a 
 
 ## Bibliography
 
+This section is only relevant if you use the researcher agent. If you don't, skip it — nothing in the core workflow depends on it.
+
 When a researcher finding backs a lasting decision, the historian tracks the source. The pipeline has three parts:
 
 1. The **researcher** agent emits a `CITE:` tag after every source block:
@@ -130,7 +132,7 @@ bash install.sh
 
 The script installs the historian agent, `/load` and `/save` commands, and three hooks into `~/.claude/`, backing up any existing files first. If you already have a `CLAUDE.md` it appends the historian routing rules rather than overwriting it.
 
-After installing, add the hooks to `~/.claude/settings.json`:
+After installing, add the hooks to `~/.claude/settings.json` (Claude Code's global config — create it if it doesn't exist):
 
 ```json
 {
@@ -149,6 +151,8 @@ After installing, add the hooks to `~/.claude/settings.json`:
 }
 ```
 
+The `startup` and `clear` matcher values are Claude Code's built-in SessionStart triggers — `startup` fires when you open a new session, `clear` fires on `/clear`.
+
 Then restart Claude Code.
 
 **Minimum install:** the `SessionStart` and `UserPromptSubmit` hooks handle automatic context injection. The `Stop` hook is optional — it only adds the size notification nudge.
@@ -165,7 +169,7 @@ cp commands/save.md      ~/.claude/commands/
 cp hooks/*.sh            ~/.claude/hooks/
 chmod +x                 ~/.claude/hooks/*.sh
 
-# Append routing rules to your CLAUDE.md (or copy if you don't have one)
+# Append this repo's routing rules to your global ~/.claude/CLAUDE.md (or copy if you don't have one)
 cat CLAUDE.md >> ~/.claude/CLAUDE.md
 ```
 
@@ -177,21 +181,17 @@ Then add the settings.json snippet above.
 
 ### Automatic (no action required)
 
-History is injected at the start of every session. The stop hook watches transcript size and notifies you when a manual `/save` is worth running. For short sessions where no lasting decisions were made, git log reconstruction at the next session start is usually sufficient.
+History is injected at the start of every session. The stop hook watches transcript size and notifies you when a manual `/save` is worth running. For short sessions where no lasting decisions were made, git log reconstruction at the next session start is usually sufficient. `/load` exists as a manual fallback for edge cases where the hook didn't fire.
 
 ### `/save` — save the current session manually
 
-Run `/save` before `/clear` or at the end of a substantial session. The historian agent reads the conversation and git state, distills a structured summary, merges it with any auto-save from today, and writes the day file. This captures decisions and context that git log alone can't reconstruct.
-
-### `/load` — load history manually
-
-The prompt-submit hook handles this automatically on session start. Use `/load` when you need history from a different project, or when the hook didn't fire (e.g. you opened Claude Code in a different directory).
+Run `/save` before `/clear` or at the end of a substantial session. The historian agent reads the conversation and git state, distills a structured summary, and writes the day file. This captures decisions and context that git log alone can't reconstruct.
 
 ### BACKFILL — reconstruct history from git
 
 If you're starting with a project that has no history files, the historian agent can reconstruct day files from `git log`.
 
-Open Claude Code in any directory and say (addressing the historian agent directly):
+Open Claude Code in any directory and ask in plain English:
 
 > "Backfill history for my projects under ~/code"
 
@@ -203,7 +203,7 @@ The agent defaults to `$HOME` as the base directory — narrow it for speed. Exi
 
 ## Platform notes
 
-- **Notifications** — the stop hook fires a notification when the session transcript exceeds 300KB. On macOS this uses `osascript`; on Linux desktop it uses `notify-send` (`apt install libnotify-bin` / `dnf install libnotify`). Windows and headless environments get no notification — the auto-save still runs silently.
+- **Notifications** — the stop hook fires a notification when the session transcript exceeds 300KB. On macOS this uses `osascript`; on Linux desktop it uses `notify-send` (`apt install libnotify-bin` / `dnf install libnotify`). Windows and headless environments get no notification — the hook silently skips.
 - **Date compatibility** — BACKFILL computes "90 days ago" using both BSD (`date -v-90d`) and GNU (`date -d "90 days ago"`) syntax and picks whichever works.
 - **Dependencies** — `bash`, `git`, `jq`. `bash` and `git` are standard everywhere; `jq` must be installed separately on most Linux distros (`apt install jq` or `brew install jq` on macOS if not present).
-- **bash version** — the hooks use `[[ ]]` conditionals that require bash 4+. macOS ships bash 3.2; install a current bash via Homebrew (`brew install bash`) if hooks misbehave on macOS.
+- **bash version** — the hooks use `[[ ]]` conditionals that require bash 4+. macOS ships bash 3.2 by default, which will cause hooks to silently misbehave — install a current bash via Homebrew (`brew install bash`) before running anything on macOS.
