@@ -36,7 +36,7 @@ The system gets more useful the longer you run it.
 
 - **Stale memory detection** — the historian checks project memories at each `/save` and flags entries that no longer match reality. Outdated memories get retired rather than silently misleading future sessions.
 
-- **Project-specific memory curation** — memories are scoped per project and curated separately from Claude Code's global user memory. Memories that prove durable get graduated into `CLAUDE.md` automatically during the SAVE process.
+- **Project-specific memory curation** — memories are scoped per project and curated separately from Claude Code's global user memory. During `/save`, the historian surfaces memories that may be worth promoting to `CLAUDE.md` — you review and apply them.
 
 - **Backfillable** — already have a project with months of git history but no historian files? BACKFILL reconstructs day files from `git log` so you're not starting from zero. Existing session-saved files are never overwritten.
 
@@ -126,6 +126,8 @@ This step is **opt-in and graceful** — if no `DECISION-SOURCE:` markers are fo
 
 ## Installation
 
+> **macOS prerequisite:** macOS ships bash 3.2, but the hooks require bash 4+. Install a current bash before running anything: `brew install bash`. Without it, hooks will silently misbehave and context injection won't work.
+
 ```bash
 bash install.sh
 ```
@@ -169,7 +171,9 @@ cp commands/save.md      ~/.claude/commands/
 cp hooks/*.sh            ~/.claude/hooks/
 chmod +x                 ~/.claude/hooks/*.sh
 
-# Append this repo's routing rules to your global ~/.claude/CLAUDE.md (or copy if you don't have one)
+# Append this repo's routing rules to your global ~/.claude/CLAUDE.md (or copy if you don't have one).
+# The rules tell Claude to delegate /save and /load to the historian agent,
+# use the researcher agent for documentation lookups, and emit DECISION-SOURCE markers.
 cat CLAUDE.md >> ~/.claude/CLAUDE.md
 ```
 
