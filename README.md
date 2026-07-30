@@ -26,6 +26,20 @@ The multi-project story is worth calling out: context-historian keys history to 
 
 The short version: built-in memory knows about you, `CLAUDE.md` knows about the project's rules, context-historian knows what happened yesterday.
 
+## What builds up over time
+
+The system gets more useful the longer you run it.
+
+- **Long-term memory** — history files accumulate in `~/.claude/history/<project>/`. `TIMELINE.md` grows into a chronological arc of the project — what the branch looked like in November, what changed in January, what's open now. The context injected on day 90 is richer than day 1.
+
+- **Hands-off documentation** — every `/save` is a structured journal entry: what was built, what was decided, what's still open. Over a long engagement this becomes a complete record of the project's evolution without anyone sitting down to write it up.
+
+- **Stale memory detection** — the historian checks project memories at each `/save` and flags entries that no longer match reality. Outdated memories get retired rather than silently misleading future sessions.
+
+- **Project-specific memory curation** — memories are scoped per project and curated separately from Claude Code's global user memory. Memories that prove durable get graduated into `CLAUDE.md` automatically during the SAVE process.
+
+- **Backfillable** — already have a project with months of git history but no historian files? BACKFILL reconstructs day files from `git log` so you're not starting from zero. Existing session-saved files are never overwritten.
+
 ---
 
 ## What gets stored
