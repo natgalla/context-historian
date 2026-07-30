@@ -2,7 +2,7 @@
 
 Open Claude Code in a project. Type your first message. Claude already knows what branch you're on, what was decided last session, what your teammate pushed this morning. You didn't do anything — it just knows.
 
-That's what context-historian does. It captures session context as you work and injects it automatically at the start of every new session, keyed to the project you're in. Switch projects, get that project's context. No configuration, no "here's where we left off" preamble.
+That's what context-historian does. It captures session context as you work and injects it automatically at the start of every new session, keyed to the project you're in. Switch projects, get that project's context. No configuration, no "here's where we left off" preamble. When you're ready to close, `/save` distills the session — the historian decides what context carries forward, capturing decisions and open threads without you having to curate it manually. The next session picks up from there.
 
 Under the hood it uses three hooks and two agents:
 
