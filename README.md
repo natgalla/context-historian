@@ -8,6 +8,7 @@ context-historian solves this with three hooks and one agent:
 - A **session-start hook** leaves a sentinel so the system knows it's a fresh session
 - A **prompt-submit hook** intercepts your first message, reads the most recent summary for the current project, and injects it as context — automatically, before Claude sees your prompt
 - The **historian agent** does the real work: distilling sessions into structured summaries, loading and diffing them against the current git state, and reconstructing history from git log when no summary exists
+- The **researcher agent** finds answers in docs and the web rather than memory, and emits `CITE:` tags that feed the bibliography pipeline
 
 The net effect: every session starts with context. You don't have to think about it.
 
@@ -47,6 +48,37 @@ If no history file exists for a project, `/load` falls back to reconstructing co
 
 ---
 
+## Bibliography
+
+When a researcher finding backs a lasting decision, the historian tracks the source. The pipeline has three parts:
+
+1. The **researcher** agent emits a `CITE:` tag after every source block:
+   ```
+   CITE: slug=<kebab-slug> url=<url-or-path> accessed=<YYYY-MM-DD>
+   ```
+2. You (or your main agent) emit a `DECISION-SOURCE:` marker when that finding grounds a lasting decision:
+   ```
+   DECISION-SOURCE: slug=<slug>
+   ```
+3. At `/save` time, the historian scans the session for matching marker/tag pairs and upserts entries into `BIBLIOGRAPHY.md` at the repo root.
+
+This step is **opt-in and graceful** — if no `DECISION-SOURCE:` markers are found in a session, it silently skips. Nothing breaks if you don't use it.
+
+`BIBLIOGRAPHY.md` entries look like this:
+
+```markdown
+### stripe-idempotency-keys
+
+- **Source:** https://stripe.com/docs/api/idempotent_requests
+- **Accessed:** 2025-11-14
+- **Decision:** Use idempotency keys on all charge attempts to prevent double-charges on retry
+- **Sessions:** 2025-11-14, 2025-11-21
+```
+
+To wire up the full pipeline, add the routing rules from `CLAUDE.md` to your `~/.claude/CLAUDE.md` — the installer does this automatically.
+
+---
+
 ## Installation
 
 ```bash
@@ -82,6 +114,7 @@ Then restart Claude Code.
 mkdir -p ~/.claude/agents ~/.claude/commands ~/.claude/hooks
 
 cp agents/historian.md   ~/.claude/agents/
+cp agents/researcher.md  ~/.claude/agents/
 cp commands/load.md      ~/.claude/commands/
 cp commands/save.md      ~/.claude/commands/
 cp hooks/*.sh            ~/.claude/hooks/

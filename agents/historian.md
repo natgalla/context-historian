@@ -143,6 +143,71 @@ Add or update the corresponding entry in `$memory_dir/MEMORY.md`:
 - [Title](file.md) — one-line hook under ~150 characters
 ```
 
+### Step 5c — Harvest bibliography
+
+Skip this step entirely if the project is unidentified (same condition as Step 5).
+
+Determine the project repo root (already known from Step 1). The bibliography file lives at:
+`<repo-root>/BIBLIOGRAPHY.md`
+
+#### 5c-1: Collect DECISION-SOURCE markers
+
+Scan the current session transcript for all lines matching the pattern:
+```
+DECISION-SOURCE: slug=<value>
+```
+
+Extract every unique slug. If no `DECISION-SOURCE:` lines are found, skip the rest of this step and report "Bibliography: skipped (no DECISION-SOURCE markers this session)".
+
+#### 5c-2: Look up CITE metadata
+
+For each collected slug, find the corresponding `CITE:` line in the transcript:
+```
+CITE: slug=<slug> url=<url> accessed=<date>
+```
+
+Use the first matching CITE line for each slug. If a slug has a DECISION-SOURCE marker but no matching CITE line (e.g. the decision wasn't backed by a researcher citation), skip that slug.
+
+#### 5c-3: Load existing bibliography
+
+Check whether `<repo-root>/BIBLIOGRAPHY.md` exists. If it does not, prepare to create it with this header:
+
+```markdown
+# Bibliography
+
+Sources that backed lasting decisions in this project. Maintained by the historian agent — do not edit manually.
+
+<!-- last-updated: YYYY-MM-DD -->
+```
+
+If it does exist, read it and parse existing slugs by finding all `### <slug>` headings. Build a set of known slugs.
+
+#### 5c-4: Upsert entries
+
+For each slug with resolved CITE metadata:
+- If the slug is NOT in the known set: append a new entry block. The `Decision` field should use the exact wording of the corresponding DECISIONS entry from this session's summary. The `Sessions` field contains today's date only.
+- If the slug IS already present: find its `Sessions:` line and append today's date if not already listed. Do not change the `Decision` field.
+
+Entry format:
+```markdown
+### <slug>
+
+- **Source:** <url or file path>
+- **Accessed:** <accessed date from CITE tag>
+- **Decision:** <one sentence — the lasting decision this source grounded>
+- **Sessions:** <YYYY-MM-DD>[, <YYYY-MM-DD>, ...]
+```
+
+Update the `<!-- last-updated -->` comment to today's date on every write.
+
+#### 5c-5: Report
+
+Include bibliography activity in the Step 6 final report (the "After writing" confirmation):
+- "Bibliography: N new entries added" — if new entries were written
+- "Bibliography: N existing entries updated (sessions field)" — if only sessions were appended
+- "Bibliography: no qualifying sources this session" — if DECISION-SOURCE markers existed but no CITE metadata matched
+- "Bibliography: skipped (no DECISION-SOURCE markers this session)" — if no markers were found
+
 ### Step 6 — Update the project timeline
 
 This step only applies when writing to a project subdirectory (not the top-level fallback).
@@ -164,7 +229,7 @@ Count the `.md` files in the project directory, excluding `TIMELINE.md`. If ther
 
 Keep each day entry to 1-2 lines — just enough to orient someone scanning the arc of the project. Overwrite `TIMELINE.md` on every save so it stays current.
 
-After writing, report the file path and word count. Do not print the full summary back to the caller — just confirm it was saved and where, note whether the timeline was updated, list any memory entries written, and list any memory entries retired or updated as stale.
+After writing, report the file path and word count. Do not print the full summary back to the caller — just confirm it was saved and where, note whether the timeline was updated, list any memory entries written, list any memory entries retired or updated as stale, and report bibliography activity (new entries, updated entries, or skipped — per Step 5c-5).
 
 ---
 
