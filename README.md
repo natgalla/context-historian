@@ -159,7 +159,7 @@ The agent defaults to `$HOME` as the base directory — narrow it for speed. Exi
 
 ## Platform notes
 
-- **macOS** — the stop hook fires a system notification when the session transcript exceeds 300KB, prompting you to `/save` before context bloats. This uses `osascript` and is silently skipped on other platforms.
+- **Notifications** — the stop hook fires a notification when the session transcript exceeds 300KB. On macOS this uses `osascript`; on Linux desktop it uses `notify-send` (`apt install libnotify-bin` / `dnf install libnotify`). Windows and headless environments get no notification — the auto-save still runs silently.
 - **Date compatibility** — BACKFILL computes "90 days ago" using both BSD (`date -v-90d`) and GNU (`date -d "90 days ago"`) syntax and picks whichever works.
 - **Dependencies** — `bash`, `git`, `jq`. `bash` and `git` are standard everywhere; `jq` must be installed separately on most Linux distros (`apt install jq` or `brew install jq` on macOS if not present).
 - **bash version** — the hooks use `[[ ]]` conditionals that require bash 4+. macOS ships bash 3.2; install a current bash via Homebrew (`brew install bash`) if hooks misbehave on macOS.

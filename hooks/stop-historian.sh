@@ -23,6 +23,15 @@ fi
 TODAY=$(date +%Y-%m-%d)
 DAY_FILE="$HISTORY_DIR/$TODAY.md"
 
+notify_user() {
+  local msg="$1"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    osascript -e "display notification \"$msg\" with title \"Claude Code\" sound name \"Ping\"" 2>/dev/null || true
+  elif command -v notify-send &>/dev/null; then
+    notify-send "Claude Code" "$msg" 2>/dev/null || true
+  fi
+}
+
 # Fire notification if transcript is large — prompt for manual save while context is live
 # Claude Code stores project transcripts at ~/.claude/projects/<key>/ where <key>
 # is the CWD with slashes replaced by dashes (an internal convention, not a public API).
@@ -32,8 +41,7 @@ TRANSCRIPT=$(ls -t "$HOME/.claude/projects/$PROJECT_KEY"/*.jsonl 2>/dev/null | h
 if [ -n "$TRANSCRIPT" ]; then
   SIZE=$(wc -c < "$TRANSCRIPT" 2>/dev/null || echo 0)
   if [ "$SIZE" -gt 300000 ]; then
-    # macOS only — silently skipped on other platforms
-    osascript -e 'display notification "Context is large — run /save before clearing" with title "Claude Code" sound name "Ping"' 2>/dev/null || true
+    notify_user "Context is large — run /save before clearing"
   fi
 fi
 
