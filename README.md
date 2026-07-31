@@ -72,11 +72,11 @@ When you have multiple day files, the agent maintains a `TIMELINE.md` — a chro
 
 ## How sessions connect
 
-When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project and injects it as context — silently, automatically. By the time Claude responds to your first message, it already knows where the project stands. For large history files (over 3000 characters), only the STATE and OPEN sections are injected to avoid bloating the context window — run `/load` to pull in the full summary.
+When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project and injects it as context — silently, automatically. By the time Claude responds to your first message, it already knows where the project stands.
 
-`/load` also runs a divergence check — it compares the saved HEAD against the current git state and surfaces commits since the last save, partitioned by author, so you can see what you did vs what a teammate pushed. For short sessions, skip `/load` and let the hook handle injection automatically.
+`/load` is for surfacing context from a past session, not the current one. Run it with a date — `2026-07-28`, `yesterday`, `last week`, `3 days ago` — and it finds that day's history file, labels it as historical context, and runs a divergence check to show what changed between that snapshot and today. If no file exists for the requested date, it lists what's available instead of silently falling back.
 
-If no history file exists for a project, `/load` falls back to reconstructing a scaffold from `git log` — branch state, recent commits, and diff stats. This is a cold-start aid, not a real substitute: it can only surface what's in your commit messages. Decisions, reasoning, and open questions that never made it into a commit are invisible to it. Run `/save` at the end of sessions where those things matter.
+If no history file exists for a project at all, use BACKFILL to reconstruct a scaffold from `git log` — branch state, recent commits, and diff stats. This is a cold-start aid, not a real substitute: it can only surface what's in your commit messages. Decisions, reasoning, and open questions that never made it into a commit are invisible to it. Run `/save` at the end of sessions where those things matter.
 
 ---
 
@@ -189,7 +189,7 @@ Then add the settings.json snippet above.
 
 ### Automatic (no action required)
 
-History is injected at the start of every session. The stop hook watches transcript size and notifies you when a manual `/save` is worth running. For short sessions where no lasting decisions were made, git log reconstruction at the next session start is usually sufficient. If no history file exists for a project, `/load` triggers git log reconstruction manually — useful for cold-starting a project that has no saved summaries yet.
+History is injected at the start of every session. The stop hook watches transcript size and notifies you when a manual `/save` is worth running. For short sessions where no lasting decisions were made, git log reconstruction at the next session start is usually sufficient. Use BACKFILL to cold-start a project that has no saved summaries yet.
 
 ### `/save` — save the current session manually
 
