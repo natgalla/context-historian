@@ -20,7 +20,7 @@ Claude Code already has two persistence mechanisms — they do different things 
 
 **`CLAUDE.md`** holds static project instructions you write and maintain manually — conventions, constraints, architecture notes that don't change session to session. context-historian doesn't replace it either; the two complement each other.
 
-**context-historian** tracks where each project stands right now: current branch, decisions made this session, what's open, what your teammates just pushed. It's project-scoped, session-dynamic, and updates automatically as you work.
+**context-historian** tracks where each project stands right now: current branch, decisions made this session, what's open, what's still in flight. It's project-scoped, session-dynamic, and updates automatically as you work.
 
 The multi-project story is worth calling out: context-historian keys history to the git root of whatever directory you open Claude Code in. Switch from `api` to `frontend` to `infra` — each project gets its own history injected automatically, with no configuration and no "which project am I in" overhead. The right context shows up because the hook reads your working directory.
 
