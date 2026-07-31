@@ -1,6 +1,6 @@
 # context-historian
 
-Open Claude Code in a project. Type your first message. Claude already knows what branch you're on, what was decided last session, what your teammate pushed this morning. You didn't do anything — it just knows.
+Open Claude Code in a project. Type your first message. Claude already knows what branch you're on, what was decided last session, and where things stand right now. You didn't do anything — it just knows.
 
 That's what context-historian does. It captures session context as you work and injects it automatically at the start of every new session, keyed to the project you're in. Switch projects, get that project's context. No configuration, no "here's where we left off" preamble. When you're ready to close, `/save` distills the session — the historian decides what context carries forward, capturing decisions and open threads without you having to curate it manually. The next session picks up from there.
 
@@ -74,7 +74,7 @@ When you have multiple day files, the agent maintains a `TIMELINE.md` — a chro
 
 When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project and injects it as context — silently, automatically. By the time Claude responds to your first message, it already knows where the project stands. For large history files (over 3000 characters), only the STATE and OPEN sections are injected to avoid bloating the context window — run `/load` to pull in the full summary.
 
-The injected summary also includes a divergence check: the historian compares the saved HEAD against the current git state. New commits since the last save get surfaced as a "since last summary" section, partitioned by author (resolved via `git config user.email`) so you can see at a glance what you did vs what a teammate pushed.
+`/load` also runs a divergence check — it compares the saved HEAD against the current git state and surfaces commits since the last save, partitioned by author, so you can see what you did vs what a teammate pushed. For short sessions, skip `/load` and let the hook handle injection automatically.
 
 If no history file exists for a project, `/load` falls back to reconstructing a scaffold from `git log` — branch state, recent commits, and diff stats. This is a cold-start aid, not a real substitute: it can only surface what's in your commit messages. Decisions, reasoning, and open questions that never made it into a commit are invisible to it. Run `/save` at the end of sessions where those things matter.
 
