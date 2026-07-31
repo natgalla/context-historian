@@ -447,16 +447,13 @@ For each repo, get all commits from the start date onward, grouped by day. Use `
 git -C <repo-path> log --format="%x1f%ad%x1f%H%x1f%s%x1f%b%x1e" --date=format-local:%Y-%m-%d --after="<start-date>" --reverse
 ```
 
-Default start date: 90 days ago. Compute it at run time:
+Default start date: today (today's commits only). Compute it at run time:
 
 ```bash
-# macOS / BSD date
-date -v-90d +%Y-%m-%d
-# GNU date (Linux)
-date -d "90 days ago" +%Y-%m-%d
+date +%Y-%m-%d
 ```
 
-Accept an override if the caller specifies a date or a "N days ago" expression.
+Accept an override if the caller specifies a date or a "N days ago" expression — e.g. `30 days ago` to reconstruct the past month.
 
 Split on `%x1e`/`%x1f` as described in LOAD Step 1b.
 
