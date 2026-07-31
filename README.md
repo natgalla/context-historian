@@ -128,7 +128,7 @@ This step is **opt-in and graceful** — if no `DECISION-SOURCE:` markers are fo
 
 ## Installation
 
-> **Canonical source:** `historian.md` and the related skill and hook files originate in the [claude-workflow](https://github.com/ngallagher/claude-workflow) repo and are propagated here via `sync-historian.sh`. Direct edits to these files in context-historian will be overwritten on the next sync — make changes in claude-workflow instead.
+> **Canonical source:** `historian.md` and the related skill and hook files originate in a private upstream repo and are propagated here. Direct edits to these files in context-historian may be overwritten — this repo is the authoritative community release.
 
 > **macOS prerequisite:** macOS ships bash 3.2, but the hooks require bash 4+. Install a current bash before running anything: `brew install bash`. Without it, hooks will silently misbehave and context injection won't work.
 
