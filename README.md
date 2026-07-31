@@ -189,7 +189,7 @@ Then add the settings.json snippet above.
 
 ### Automatic (no action required)
 
-History is injected at the start of every session. The stop hook watches transcript size and notifies you when a manual `/save` is worth running. For short sessions where no lasting decisions were made, git log reconstruction at the next session start is usually sufficient. `/load` exists as a manual fallback for edge cases where the hook didn't fire.
+History is injected at the start of every session. The stop hook watches transcript size and notifies you when a manual `/save` is worth running. For short sessions where no lasting decisions were made, git log reconstruction at the next session start is usually sufficient. If no history file exists for a project, `/load` triggers git log reconstruction manually — useful for cold-starting a project that has no saved summaries yet.
 
 ### `/save` — save the current session manually
 
