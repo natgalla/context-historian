@@ -72,7 +72,7 @@ When you have multiple day files, the agent maintains a `TIMELINE.md` — a chro
 
 ## How sessions connect
 
-When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project and injects it as context — silently, automatically. By the time Claude responds to your first message, it already knows where the project stands.
+When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project and injects it as context — silently, automatically. By the time Claude responds to your first message, it already knows where the project stands. For large history files (over 3000 characters), only the STATE and OPEN sections are injected to avoid bloating the context window — run `/load` to pull in the full summary.
 
 The injected summary also includes a divergence check: the historian compares the saved HEAD against the current git state. New commits since the last save get surfaced as a "since last summary" section, partitioned by author (resolved via `git config user.email`) so you can see at a glance what you did vs what a teammate pushed.
 
@@ -211,7 +211,7 @@ The agent defaults to `$HOME` as the base directory — narrow it for speed. Exi
 
 ## Platform notes
 
-- **Notifications** — the stop hook fires a notification when the session transcript exceeds 300KB. On macOS this uses `osascript`; on Linux desktop it uses `notify-send` (`apt install libnotify-bin` / `dnf install libnotify`). Windows and headless environments get no notification — the hook silently skips.
+- **Notifications** — the stop hook fires a macOS notification (via `osascript`) when the session transcript exceeds 300KB. Linux, Windows, and headless environments get no notification — the hook silently skips.
 - **Date compatibility** — BACKFILL computes "90 days ago" using both BSD (`date -v-90d`) and GNU (`date -d "90 days ago"`) syntax and picks whichever works.
 - **Dependencies** — `bash`, `git`, `jq`. `bash` and `git` are standard everywhere; `jq` must be installed separately on most Linux distros (`apt install jq` or `brew install jq` on macOS if not present).
-- **bash version** — the hooks use `[[ ]]` conditionals that require bash 4+. macOS ships bash 3.2 by default, which will cause hooks to silently misbehave — install a current bash via Homebrew (`brew install bash`) before running anything on macOS.
+- **bash version** — `install.sh` uses `[[ ]]` conditionals that require bash 4+. macOS ships bash 3.2 by default, which will cause the installer to fail — install a current bash via Homebrew (`brew install bash`) before running anything on macOS.
