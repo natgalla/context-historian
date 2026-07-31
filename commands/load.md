@@ -55,27 +55,3 @@ Teammates:
 ```
 
 If all commits are by the same author, omit the grouping and write a single paragraph. If git is unavailable, skip this step entirely.
-
-## Step 4b — Check for default-branch divergence
-
-Run:
-```bash
-git fetch origin 2>/dev/null
-DEFAULT=$(git remote show origin 2>/dev/null | awk '/HEAD branch/ {print $NF}')
-MERGE_BASE=$(git merge-base HEAD "origin/$DEFAULT" 2>/dev/null)
-```
-
-If the current branch IS the default branch, skip this step.
-
-Otherwise, get commits on `origin/$DEFAULT` since the merge-base:
-```bash
-git log --oneline "$MERGE_BASE..origin/$DEFAULT" 2>/dev/null
-```
-
-If any commits exist, add a single footnote line at the end of the injected summary:
-
-```
-Meanwhile on [default-branch]: N commit(s) since you branched — run `git fetch && git log origin/[default-branch]` to review.
-```
-
-Do not expand on this further — it's a footnote, not a full diff.

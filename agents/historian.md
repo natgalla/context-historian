@@ -90,8 +90,6 @@ The stored HEAD hash is used by LOAD Step 3 as a precise divergence anchor, avoi
 
 ### Step 5 — Write lasting decisions to memory
 
-Step 5 has three sub-steps: 5a retires stale memory entries, 5b writes new ones, 5c harvests bibliography sources.
-
 After the day file is written, carry lasting decisions into the memory system and retire any memories that have become stale. Skip this step entirely if the project is unidentified (generic basename).
 
 Derive the memory directory from the project root (same path used for git or pwd above):
@@ -233,7 +231,76 @@ Count the `.md` files in the project directory, excluding `TIMELINE.md`. If ther
 
 Keep each day entry to 1-2 lines — just enough to orient someone scanning the arc of the project. Overwrite `TIMELINE.md` on every save so it stays current.
 
-After writing, report the file path and word count. Do not print the full summary back to the caller — just confirm it was saved and where, note whether the timeline was updated, list any memory entries written, list any memory entries retired or updated as stale, and report bibliography activity (new entries, updated entries, or skipped — per Step 5c-5).
+After writing, report the file path and word count. Do not print the full summary back to the caller — just confirm it was saved and where, note whether the timeline was updated, list any memory entries written, list any memory entries retired or updated as stale, report bibliography activity (new entries, updated entries, or skipped — per Step 5c-5), report how many memories were promoted or deleted as redundant (Step 7), and whether SYSTEM.md was updated (Step 8).
+
+### Step 7 — Graduate mature memories to CLAUDE.md
+
+#### 7a — Identify candidates
+
+Read all memory files in `$memory_dir`. Filter to those where `metadata.type` is `project` or `feedback` (exclude `user` and `reference`). For each candidate, determine its age using the `date` field in frontmatter. If no `date` field is present, use the file's mtime via `stat -f %Sm -t %Y-%m-%d <file>` (macOS). Any candidate whose age is ≥7 days is eligible. For each candidate, record whether age was determined from the `date:` frontmatter field or from mtime — this must be shown in the Step 7c output.
+
+Skip this step entirely if there are no eligible candidates.
+
+#### 7b — Cross-reference with CLAUDE.md
+
+Read `~/.claude/CLAUDE.md`. For each eligible candidate, assess whether the memory's substance is already reflected there:
+
+- **Already present** — the convention or rule is captured in CLAUDE.md (even if worded differently). Mark this candidate as "redundant."
+- **Not yet present** — mark as "promotion candidate."
+
+#### 7c — Present candidates and prompt for action
+
+Display a summary of all eligible candidates grouped by verdict:
+
+**Ready to promote (not yet in CLAUDE.md):**
+- For each: show the memory name, its body content, the age and source used (e.g. "28 days — from `date:` field" or "14 days — from mtime"), and the proposed CLAUDE.md section (inferred by reading current CLAUDE.md section headings and matching the memory's content to the closest fit; if nothing fits, propose a new section name)
+
+**Redundant (already in CLAUDE.md):**
+- For each: show the memory name, the age and source used (e.g. "28 days — from `date:` field" or "14 days — from mtime"), and a one-sentence note on where it's already covered
+
+Ask the user to confirm which to promote and which redundant ones to delete. Present this as a single prompt — do not ask per-memory. The user can respond with memory names or "all" / "none" for each group.
+
+#### 7d — Execute
+
+For each approved promotion:
+1. Output the content block to be added to `~/.claude/CLAUDE.md` — formatted exactly as it should appear, with the target section heading called out (e.g. "Add under **Common gotchas**:"). The user or main session will apply the write.
+2. Delete the memory file from `$memory_dir`
+3. Remove its entry from `$memory_dir/MEMORY.md`
+
+For each approved redundant deletion:
+1. Delete the memory file from `$memory_dir`
+2. Remove its entry from `$memory_dir/MEMORY.md`
+
+Do not commit any changes. The CLAUDE.md write is the user's to apply — do not write to it directly.
+
+Include in the final report: how many memories were promoted, how many were deleted as redundant, and how many were skipped.
+
+### Step 8 — Maintain SYSTEM.md
+
+Maintain `~/.claude/history/SYSTEM.md` as a system reference document covering agents, skills, and memory/history conventions. It is not a project tracker — project state lives in day files. This file is historian-authored only — never written by the main agent.
+
+#### 8a — Create or load
+
+Check whether `~/.claude/history/SYSTEM.md` exists.
+
+**If it does not exist**, create it from scratch:
+- **System map**: list each file in `~/.claude/agents/` and `~/.claude/commands/`, one entry per file. For each, read its frontmatter `description` field (or the first non-blank line if no frontmatter) and use that as the entry description. Group under two headings: `### Agents (~/.claude/agents/)` and `### Skills (~/.claude/commands/)`. Also add a `### Memory system` and `### History system` sub-section describing the directory layout and key conventions (types, graduation, write-scope boundaries).
+- Write the file with a `_Last updated: YYYY-MM-DD — <project-name> SAVE_` line at the top under the heading.
+
+**If it exists**, read it and proceed to 8b.
+
+#### 8b — Reconcile system map
+
+Compare the current file listing of `~/.claude/agents/` and `~/.claude/commands/` against what is documented in the System Map section:
+
+- **New file** (in filesystem, not in doc): add an entry using the file's frontmatter description.
+- **Removed file** (in doc, not in filesystem): remove its entry.
+- **Existing file, description unchanged**: leave the entry untouched — preserve any hand-edited elaboration.
+- **Existing file, frontmatter description changed**: update the description.
+
+Do not regenerate the Memory system or History system sub-sections on every save — only update them if their content is clearly wrong or missing.
+
+Update the `_Last updated:_` line at the top.
 
 ---
 

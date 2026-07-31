@@ -22,7 +22,7 @@ else
   HISTORY_DIR="$HOME/.claude/history"
 fi
 
-HISTORY_FILE=$(find "$HISTORY_DIR" -maxdepth 1 -name "*.md" ! -name "TIMELINE.md" 2>/dev/null | sort | tail -1)
+HISTORY_FILE=$(ls "$HISTORY_DIR"/*.md 2>/dev/null | grep -v TIMELINE | sort | tail -1)
 [ -f "$HISTORY_FILE" ] || exit 0
 
 HISTORY_CONTENT=$(cat "$HISTORY_FILE")
