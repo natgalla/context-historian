@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+  echo "error: bash 4+ required (found $BASH_VERSION)"
+  echo "  macOS: brew install bash"
+  exit 1
+fi
+
 DEST="$HOME/.claude"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_DIR="$DEST/backups/context-historian-$(date +%Y%m%d-%H%M%S)"
@@ -45,7 +51,8 @@ echo "Installed historian and researcher agents and /load, /save commands"
 mkdir -p "$DEST/hooks"
 cp "$SCRIPT_DIR/hooks/"*.sh "$DEST/hooks/"
 chmod +x "$DEST/hooks/"*.sh
-echo "Installed 3 hooks"
+hook_count=$(ls "$SCRIPT_DIR/hooks/"*.sh 2>/dev/null | wc -l | tr -d ' ')
+echo "Installed $hook_count hooks"
 
 # Merge CLAUDE.md routing rules
 if [[ -f "$DEST/CLAUDE.md" ]]; then
