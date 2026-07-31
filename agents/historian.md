@@ -231,7 +231,7 @@ Count the `.md` files in the project directory, excluding `TIMELINE.md`. If ther
 
 Keep each day entry to 1-2 lines — just enough to orient someone scanning the arc of the project. Overwrite `TIMELINE.md` on every save so it stays current.
 
-After writing, report the file path and word count. Do not print the full summary back to the caller — just confirm it was saved and where, note whether the timeline was updated, list any memory entries written, list any memory entries retired or updated as stale, report bibliography activity (new entries, updated entries, or skipped — per Step 5c-5), report how many memories were promoted or deleted as redundant (Step 7), and whether SYSTEM.md was updated (Step 8).
+After writing, report the file path and word count. Do not print the full summary back to the caller — just confirm it was saved and where, note whether the timeline was updated, list any memory entries written, list any memory entries retired or updated as stale, report bibliography activity (new entries, updated entries, or skipped — per Step 5c-5), and report how many memories were promoted or deleted as redundant (Step 7).
 
 ### Step 7 — Graduate mature memories to CLAUDE.md
 
@@ -274,33 +274,6 @@ For each approved redundant deletion:
 Do not commit any changes. The CLAUDE.md write is the user's to apply — do not write to it directly.
 
 Include in the final report: how many memories were promoted, how many were deleted as redundant, and how many were skipped.
-
-### Step 8 — Maintain SYSTEM.md
-
-Maintain `~/.claude/history/SYSTEM.md` as a system reference document covering agents, skills, and memory/history conventions. It is not a project tracker — project state lives in day files. This file is historian-authored only — never written by the main agent.
-
-#### 8a — Create or load
-
-Check whether `~/.claude/history/SYSTEM.md` exists.
-
-**If it does not exist**, create it from scratch:
-- **System map**: list each file in `~/.claude/agents/` and `~/.claude/commands/`, one entry per file. For each, read its frontmatter `description` field (or the first non-blank line if no frontmatter) and use that as the entry description. Group under two headings: `### Agents (~/.claude/agents/)` and `### Skills (~/.claude/commands/)`. Also add a `### Memory system` and `### History system` sub-section describing the directory layout and key conventions (types, graduation, write-scope boundaries).
-- Write the file with a `_Last updated: YYYY-MM-DD — <project-name> SAVE_` line at the top under the heading.
-
-**If it exists**, read it and proceed to 8b.
-
-#### 8b — Reconcile system map
-
-Compare the current file listing of `~/.claude/agents/` and `~/.claude/commands/` against what is documented in the System Map section:
-
-- **New file** (in filesystem, not in doc): add an entry using the file's frontmatter description.
-- **Removed file** (in doc, not in filesystem): remove its entry.
-- **Existing file, description unchanged**: leave the entry untouched — preserve any hand-edited elaboration.
-- **Existing file, frontmatter description changed**: update the description.
-
-Do not regenerate the Memory system or History system sub-sections on every save — only update them if their content is clearly wrong or missing.
-
-Update the `_Last updated:_` line at the top.
 
 ---
 
