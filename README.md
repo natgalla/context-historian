@@ -40,7 +40,7 @@ The system gets more useful the longer you run it.
 
 - **Backfillable** — already have a project with months of git history but no historian files? BACKFILL reconstructs day files from `git log` so you're not starting from zero. Existing session-saved files are never overwritten.
 
-- **History integrity** — past day files are read-only by default. If you ask the historian to amend a prior summary, it surfaces the request, quotes the contested text, and requires explicit justification before touching anything. Requests to soften wording or revise narrative without a demonstrable factual error are declined. The record is trustworthy because it can't be quietly revised.
+- **History integrity** — if you ask the historian agent to amend a prior summary, it surfaces the request, quotes the contested text, and requires explicit justification before touching anything. Requests to soften wording or revise narrative without a demonstrable factual error are declined. This covers agent-mediated changes — you can always edit the files directly, and sometimes that's the right call. The protection exists so casual revision requests don't slip through unexamined.
 
 ---
 
