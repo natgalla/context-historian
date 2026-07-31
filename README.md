@@ -78,6 +78,12 @@ When you open Claude Code and type your first message, the prompt-submit hook fi
 
 If no history file exists for a project at all, use BACKFILL to reconstruct a scaffold from `git log` — branch state, recent commits, and diff stats. This is a cold-start aid, not a real substitute: it can only surface what's in your commit messages. Decisions, reasoning, and open questions that never made it into a commit are invisible to it. Run `/save` at the end of sessions where those things matter.
 
+**Recommended CLAUDE.md addition:** If you find Claude narrating a state check at session start ("let me check the project state...") even though the hook is already injecting context, add this to your `~/.claude/CLAUDE.md`:
+
+```
+When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.
+```
+
 ---
 
 ## Costs and tradeoffs
