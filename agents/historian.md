@@ -55,7 +55,11 @@ Produce a summary under these four headings. Omit any section that has nothing t
 
 **OPEN** — Unresolved questions, parked work, or known issues that weren't addressed this session. If nothing is open, omit this section entirely.
 
-Keep the whole summary under 400 words. Use plain language — this is read cold by the next context window.
+Use plain language — this is read cold by the next context window. Apply these structural limits per section:
+- **STATE:** max 2 sentences
+- **DECISIONS:** max 10 bullets, one line each
+- **DONE:** max 15 bullets; if more than 15 items exist, list the 15 most significant and append "N additional commits — see git log"
+- **OPEN:** max 5 bullets
 
 ### Step 3b — Merge with existing day file
 
@@ -210,6 +214,8 @@ Include bibliography activity in the Step 6 final report (the "After writing" co
 - "Bibliography: no qualifying sources this session" — if DECISION-SOURCE markers existed but no CITE metadata matched
 - "Bibliography: skipped (no DECISION-SOURCE markers this session)" — if no markers were found
 
+Additionally, if the DECISIONS section written in Step 3 is non-empty but no DECISION-SOURCE markers were found in the session, surface this as a visible gap in the Step 6 report: "N decisions recorded but no DECISION-SOURCE markers found — were these backed by researcher lookups?"
+
 ### Step 6 — Update the project timeline
 
 This step only applies when writing to a project subdirectory (not the top-level fallback).
@@ -231,7 +237,7 @@ Count the `.md` files in the project directory, excluding `TIMELINE.md`. If ther
 
 Keep each day entry to 1-2 lines — just enough to orient someone scanning the arc of the project. Overwrite `TIMELINE.md` on every save so it stays current.
 
-After writing, report the file path and word count. Do not print the full summary back to the caller — just confirm it was saved and where, note whether the timeline was updated, list any memory entries written, list any memory entries retired or updated as stale, report bibliography activity (new entries, updated entries, or skipped — per Step 5c-5), and report how many memories were promoted or deleted as redundant (Step 7).
+After writing, report the file path and word count. Do not print the full summary back to the caller — just confirm it was saved and where, note whether the timeline was updated, list any memory entries written, list any memory entries retired or updated as stale, report bibliography activity (new entries, updated entries, or skipped — per Step 5c-5), and report how many memories were promoted or deleted as redundant (Step 7). If Steps 5, 5c, or memory processing were skipped because the project could not be identified, say so explicitly in the report: "Memory/bibliography: skipped — project name could not be identified. Run from a named git repo to enable these steps."
 
 ### Step 7 — Graduate mature memories to CLAUDE.md
 
