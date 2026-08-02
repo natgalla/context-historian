@@ -1,25 +1,27 @@
 ---
-description: Load historical session context for the current project from a specific past date. The user-prompt-submit hook handles current-session injection automatically; use /load only to surface context from a past session.
+description: Load historical session context for the current project. A single date is a file lookup; a date range delegates to the historian for a synthesized narrative. The user-prompt-submit hook handles current-session injection automatically; use /load only to surface context from a past session.
 ---
 
 ## No-args case
 
 If invoked without a date argument, do not silently load the most recent file. Instead, explain:
 
-> The hook auto-injects current session context (STATE + OPEN) at the start of each prompt — you already have today's state. `/load` is for surfacing context from a past session. Which date would you like to load context from? (e.g. `2026-07-28`, `yesterday`, `last week`, `3 days ago`)
+> The hook auto-injects current session context (STATE + OPEN) at the start of each prompt — you already have today's state. `/load` is for surfacing context from a past session. Which date (or date range) would you like? (e.g. `2026-07-28`, `yesterday`, `2026-07-01 2026-07-31`)
 
 Wait for the user to provide a date before continuing.
 
-## Step 1 — Resolve the date
+## Step 1 — Resolve the date(s)
 
-Accept a date in any of these forms and resolve it to `YYYY-MM-DD`:
+Accept one or two dates. Resolve each to `YYYY-MM-DD`:
 
 - Absolute: `2026-07-28`
 - `yesterday` — today minus one day
 - `last week` — today minus seven days
 - `N days ago` — today minus N days
 
-Use the current date as the reference point for relative resolution. Store the resolved date as `<target-date>`.
+**Single date** — store as `<target-date>`, follow the single-day flow below.
+
+**Two dates** — store as `<start-date>` and `<end-date>`, skip to the [Date range flow](#date-range-flow).
 
 ## Step 2 — Identify the project
 
@@ -80,3 +82,19 @@ Teammates:
 ```
 
 If all commits are by the same author, omit the grouping and write a single paragraph. If git is unavailable, skip this step entirely.
+
+---
+
+## Date range flow
+
+Do not attempt inline aggregation. Delegate to the historian:
+
+> Spawn the historian agent with: LOAD range `<start-date>` to `<end-date>` for project `<project-name>`.
+
+The historian reads the day entries for that range and synthesizes a narrative summary. Its output is not a concatenation of day entries — it should compress, highlight lasting decisions, and surface what's most relevant to the asker. It may be longer than a single day entry. Present it labeled as:
+
+```
+Context from <start-date> → <end-date> (historian narrative — not current state)
+```
+
+Do not present it as live state.

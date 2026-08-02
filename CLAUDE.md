@@ -3,6 +3,16 @@
 ## Saving session history
 Delegate to the **historian** agent for `SAVE` (end of session, "wrap up", "I'm done for the day") and `BACKFILL` (reconstruct history from git). Do not summarize sessions inline.
 
+## Loading session history
+`/load` with a **single date** is handled by the load.md command directly — it locates the day file, presents it, and runs a git divergence check. Do not delegate single-date loads to the historian agent.
+
+`/load` with a **date range** delegates to the historian agent in LOAD RANGE mode.
+
+If `/load` is invoked with no arguments, explain that the prompt-submit hook already injected current session context and ask which date (or date range) the user wants.
+
+## Team sync
+`/team-sync` is handled by the team-sync command. The historian agent is invoked only for the final file write (TEAM-FILE mode) — the command owns collection and composition. Do not spawn the full SAVE pipeline for team-sync calls.
+
 ## Researcher agent
 Delegate factual questions that require reading documentation to the **researcher** agent — API behavior, library docs, version constraints, external specs. Do not answer from memory or fetch docs inline.
 

@@ -74,7 +74,11 @@ When you have multiple day files, the agent maintains a `TIMELINE.md` — a chro
 
 When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project and injects it as context — silently, automatically. By the time Claude responds to your first message, it already knows where the project stands.
 
+If the history file exceeds 3000 characters, the hook injects only the STATE and OPEN sections rather than the full file, to avoid bloating the context window. A note is appended pointing to `/load` for the complete entry.
+
 `/load` is for surfacing context from a past session, not the current one. Run it with a date — `2026-07-28`, `yesterday`, `last week`, `3 days ago` — and it finds that day's history file, labels it as historical context, and runs a divergence check to show what changed between that snapshot and today. If no file exists for the requested date, it lists what's available instead of silently falling back.
+
+Pass two dates to get a narrative across a range — `/load 2026-07-01 2026-07-31`. This delegates to the historian agent, which reads the day files for that span and synthesizes an arc: key decisions, significant work, and what was open at the end of the period. It's an editorial summary, not a concatenation — only what's in the day files, nothing inferred.
 
 If no history file exists for a project at all, use BACKFILL to reconstruct a scaffold from `git log` — branch state, recent commits, and diff stats. This is a cold-start aid, not a real substitute: it can only surface what's in your commit messages. Decisions, reasoning, and open questions that never made it into a commit are invisible to it. Run `/save` at the end of sessions where those things matter.
 
@@ -202,8 +206,6 @@ History is injected at the start of every session. The stop hook watches transcr
 
 Run `/save` before `/clear` or at the end of a substantial session. The historian agent reads the conversation and git state, distills a structured summary, and writes the day file. This captures decisions and context that git log alone can't reconstruct.
 
-If `gh` is installed and the repo has a GitHub remote, `/save` also pulls in recent merged PRs (as DONE entries) and any open PR on the current branch (surfaced in STATE or OPEN). This is opt-in by availability — the step fails silently if `gh` is absent or unauthenticated.
-
 ### `/team-sync` — see what teammates have landed
 
 Run `/team-sync` to get a plain-English summary of commits by other authors since your last saved session. File overlaps are flagged with `[!]` so you can spot areas where your work and a teammate's may collide.
@@ -229,6 +231,6 @@ The agent defaults to `$HOME` as the base directory — narrow it for speed. Exi
 ## Platform notes
 
 - **Notifications** — the stop hook fires a notification when the session transcript exceeds 300KB. On macOS this uses `osascript`; on Linux desktop it falls back to `notify-send` (`apt install libnotify-bin` / `dnf install libnotify`). Windows and headless environments get no notification — the hook silently skips.
-- **Date compatibility** — BACKFILL defaults to today's commits. When passing a date range override, both BSD (`date -v-Nd`) and GNU (`date -d "N days ago"`) syntax are accepted; the agent picks whichever works on the current platform.
+- **Date compatibility** — BACKFILL defaults to commits from the past day (yesterday onward). When passing a date range override, both BSD (`date -v-Nd`) and GNU (`date -d "N days ago"`) syntax are accepted; the agent picks whichever works on the current platform.
 - **Dependencies** — `bash`, `git`, `jq`. `bash` and `git` are standard everywhere; `jq` must be installed separately on most Linux distros (`apt install jq` or `brew install jq` on macOS if not present). `gh` (GitHub CLI) is optional — if present and authenticated, `/save` and BACKFILL will pull in PR activity automatically.
 - **bash version** — `install.sh` uses `[[ ]]` conditionals that require bash 4+. macOS ships bash 3.2 by default, which will cause the installer to fail — install a current bash via Homebrew (`brew install bash`) before running anything on macOS.
