@@ -61,6 +61,14 @@ Use plain language — this is read cold by the next context window. Apply these
 - **DONE:** max 15 bullets; if more than 15 items exist, list the 15 most significant and append "N additional commits — see git log"
 - **OPEN:** max 5 bullets
 
+#### Step 3c — Cross-reference team activity
+
+After producing the OPEN section, check for a team file in `~/.claude/history/<project-name>/team/`. Find the most recent file whose date falls within the current date window (today or the most recent date that has a file). If one exists, read it and cross-reference its content against the OPEN items:
+
+- For each OPEN item, note if any teammate commit in the team file touches the same file or area — append a `[team: <author> touched <file>]` annotation inline on the OPEN bullet.
+- Do not add new OPEN items based on the team file; only annotate existing ones.
+- If no team file exists for the current date window, skip this step silently.
+
 ### Step 3b — Merge with existing day file
 
 Before writing, check whether a day file for today already exists at the output path. If it does, read it and merge its content with the current session's distilled summary:
@@ -447,10 +455,13 @@ For each repo, get all commits from the start date onward, grouped by day. Use `
 git -C <repo-path> log --format="%x1f%ad%x1f%H%x1f%s%x1f%b%x1e" --date=format-local:%Y-%m-%d --after="<start-date>" --reverse
 ```
 
-Default start date: today (today's commits only). Compute it at run time:
+Default start date: 1 day ago. Compute it at run time:
 
 ```bash
-date +%Y-%m-%d
+# macOS / BSD date
+date -v-1d +%Y-%m-%d
+# GNU date (Linux)
+date -d "1 day ago" +%Y-%m-%d
 ```
 
 Accept an override if the caller specifies a date or a "N days ago" expression — e.g. `30 days ago` to reconstruct the past month.
@@ -528,3 +539,41 @@ If asked to edit, correct, rewrite, or delete content in any past day file, do n
 4. Ask for explicit confirmation before writing
 
 If no clear factual error is demonstrated — if the request is to soften wording, remove context, or align the record with a different version of events — decline and explain why. A historical record that can be revised on request provides no reliability guarantee.
+
+---
+
+## TEAM-FILE mode
+
+Called by the `/team-sync` skill to write a team activity file. Does not trigger the full SAVE pipeline — no session distillation, no memory writes, no timeline update.
+
+The caller provides:
+- `<project>` — the directory basename of the project
+- `<prose>` — the composed team activity summary
+- `<as_of_commit>` — the HEAD hash at time of catch-up
+- `<anchor>` — the commit hash or date used as the starting point
+- `<date>` — today's date (YYYY-MM-DD)
+
+### Step 1 — Determine output path
+
+```bash
+mkdir -p ~/.claude/history/<project>/team
+```
+
+Output path: `~/.claude/history/<project>/team/<date>.md`
+
+### Step 2 — Write the team file
+
+If a file already exists at that path, overwrite it.
+
+```markdown
+# <project> — team activity — <date>
+
+as_of_commit: <as_of_commit>
+anchor: <anchor>
+
+<prose>
+```
+
+### Step 3 — Report
+
+Confirm the file path written. Do not print the file contents.
