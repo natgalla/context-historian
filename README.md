@@ -174,12 +174,13 @@ Then restart Claude Code.
 ```bash
 mkdir -p ~/.claude/agents ~/.claude/commands ~/.claude/hooks
 
-cp agents/historian.md   ~/.claude/agents/
-cp agents/researcher.md  ~/.claude/agents/
-cp commands/load.md      ~/.claude/commands/
-cp commands/save.md      ~/.claude/commands/
-cp hooks/*.sh            ~/.claude/hooks/
-chmod +x                 ~/.claude/hooks/*.sh
+cp agents/historian.md    ~/.claude/agents/
+cp agents/researcher.md   ~/.claude/agents/
+cp commands/load.md       ~/.claude/commands/
+cp commands/save.md       ~/.claude/commands/
+cp commands/team-sync.md  ~/.claude/commands/
+cp hooks/*.sh             ~/.claude/hooks/
+chmod +x                  ~/.claude/hooks/*.sh
 
 # Append this repo's routing rules to your global ~/.claude/CLAUDE.md (or copy if you don't have one).
 # The rules tell Claude to delegate /save and /load to the historian agent,
@@ -201,6 +202,16 @@ History is injected at the start of every session. The stop hook watches transcr
 
 Run `/save` before `/clear` or at the end of a substantial session. The historian agent reads the conversation and git state, distills a structured summary, and writes the day file. This captures decisions and context that git log alone can't reconstruct.
 
+If `gh` is installed and the repo has a GitHub remote, `/save` also pulls in recent merged PRs (as DONE entries) and any open PR on the current branch (surfaced in STATE or OPEN). This is opt-in by availability — the step fails silently if `gh` is absent or unauthenticated.
+
+### `/team-sync` — see what teammates have landed
+
+Run `/team-sync` to get a plain-English summary of commits by other authors since your last saved session. File overlaps are flagged with `[!]` so you can spot areas where your work and a teammate's may collide.
+
+The summary is written to a team file in `~/.claude/history/<project>/team/` and cross-referenced by the historian at next `/save` — if an OPEN item touches the same file a teammate just changed, the OPEN bullet gets annotated automatically.
+
+Accepts an optional date override: `/team-sync 2026-07-28` to look back from a specific day rather than the last session anchor.
+
 ### BACKFILL — reconstruct history from git
 
 If you're starting with a project that has no history files, the historian agent can reconstruct day files from `git log`.
@@ -219,5 +230,5 @@ The agent defaults to `$HOME` as the base directory — narrow it for speed. Exi
 
 - **Notifications** — the stop hook fires a notification when the session transcript exceeds 300KB. On macOS this uses `osascript`; on Linux desktop it falls back to `notify-send` (`apt install libnotify-bin` / `dnf install libnotify`). Windows and headless environments get no notification — the hook silently skips.
 - **Date compatibility** — BACKFILL defaults to today's commits. When passing a date range override, both BSD (`date -v-Nd`) and GNU (`date -d "N days ago"`) syntax are accepted; the agent picks whichever works on the current platform.
-- **Dependencies** — `bash`, `git`, `jq`. `bash` and `git` are standard everywhere; `jq` must be installed separately on most Linux distros (`apt install jq` or `brew install jq` on macOS if not present).
+- **Dependencies** — `bash`, `git`, `jq`. `bash` and `git` are standard everywhere; `jq` must be installed separately on most Linux distros (`apt install jq` or `brew install jq` on macOS if not present). `gh` (GitHub CLI) is optional — if present and authenticated, `/save` and BACKFILL will pull in PR activity automatically.
 - **bash version** — `install.sh` uses `[[ ]]` conditionals that require bash 4+. macOS ships bash 3.2 by default, which will cause the installer to fail — install a current bash via Homebrew (`brew install bash`) before running anything on macOS.
