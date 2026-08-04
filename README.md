@@ -214,8 +214,6 @@ The summary is written to a team file in `~/.claude/history/<project>/team/` and
 
 Accepts an optional date override: `/team-sync 2026-07-28` to look back from a specific day rather than the last session anchor.
 
-If you find yourself wanting certain information flagged or passed to the historian more reliably, ask the historian how to approach it — it can propose solutions.
-
 ### BACKFILL — reconstruct history from git
 
 If you're starting with a project that has no history files, the historian agent can reconstruct day files from `git log`.
