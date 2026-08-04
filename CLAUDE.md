@@ -1,7 +1,9 @@
 # Historian routing rules
 
 ## Saving session history
-Delegate to the **historian** agent for `SAVE` (end of session, "wrap up", "I'm done for the day") and `BACKFILL` (reconstruct history from git). Do not summarize sessions inline.
+For `SAVE` (end of session, "wrap up", "I'm done for the day"), invoke the `/save` skill — it pre-checks whether anything was recorded before delegating to the historian agent. Do not summarize sessions inline.
+
+Delegate to the **historian** agent directly for `BACKFILL` (reconstruct history from git).
 
 ## Loading session history
 `/load` with a **single date** is handled by the load.md command directly — it locates the day file, presents it, and runs a git divergence check. Do not delegate single-date loads to the historian agent.
@@ -30,3 +32,6 @@ DECISION-SOURCE: slug=<slug>
 ```
 
 Use the same slug from the `CITE:` tag. The historian uses these at `/save` time to populate `BIBLIOGRAPHY.md`. Only emit when a finding genuinely grounds a lasting decision.
+
+## Session-opening questions
+When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.

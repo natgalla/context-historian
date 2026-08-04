@@ -1,6 +1,6 @@
 ---
 name: historian
-description: Session historian. SAVE summarizes the current session and writes a day file; LOAD surfaces a single day's context; LOAD RANGE synthesizes a narrative across a date span; BACKFILL reconstructs history from git. Invoke at session end to save, or at the start of a new one to resume.
+description: Session historian. SAVE summarizes the current session and writes a day file; LOAD RANGE synthesizes a narrative across a date span; BACKFILL reconstructs history from git. Invoke at session end to save, for date-range narratives, or to backfill from git. Single-date /load is handled by the load command, not this agent.
 tools: Bash, Read, Write, Grep, Glob
 ---
 
@@ -36,9 +36,18 @@ If unclear, ask: "Save the current session, load the last one, load a date range
 
 ### Step 1 — Identify the project
 
-Run `git rev-parse --show-toplevel` to get the repo root. If it succeeds, derive the project name from the directory basename (e.g. `my-app`). If not in a git repo, use `pwd` and derive the name from that basename.
+Derive the project name using this routing rule:
 
-If the basename is generic or uninformative (e.g. `/`, `home`, `Users`, or the username), treat the project as unidentified and write to the top-level fallback directory instead of a subdirectory.
+```bash
+PROJECT_NAME=$(git remote get-url origin 2>/dev/null | xargs basename -s .git 2>/dev/null)
+if [ -z "$PROJECT_NAME" ]; then
+  PROJECT_NAME=$(git rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null)
+fi
+```
+
+- **Git repo with a remote:** use the canonical repo name from `git remote get-url origin` (remote basename, `.git` stripped).
+- **Git repo without a remote:** fall back to the git root basename.
+- **No git repo:** `PROJECT_NAME` is empty — this is a **journal session**. Write to `.journal/` (see Step 4).
 
 ### Step 2 — Check what actually changed
 
@@ -100,8 +109,8 @@ Proceed to Step 4 with the final content.
 ### Step 4 — Write the day file
 
 Determine the output path:
-- **Identified project:** `~/.claude/history/<project-name>/` (create with `mkdir -p` if needed)
-- **Unidentified project:** `~/.claude/history/` (top level, no subdirectory)
+- **Identified project (git repo):** `~/.claude/history/<project-name>/` (create with `mkdir -p` if needed)
+- **Journal session (no git repo):** `~/.claude/history/.journal/` (create with `mkdir -p` if needed). Use `journal` as the project label in the file header (`# journal — YYYY-MM-DD`).
 - Filename: `<YYYY-MM-DD>.md` using today's date
 - If a file for today already exists at that path, overwrite it
 
@@ -120,6 +129,8 @@ The stored HEAD hash is used by LOAD Step 3 as a precise divergence anchor, avoi
 ### Step 5 — Write lasting decisions to memory
 
 After the day file is written, carry lasting decisions into the memory system and retire any memories that have become stale. Skip this step entirely if the project is unidentified (generic basename).
+
+Day files require explicit LOAD to surface; memory files are injected automatically into every session. Writing lasting decisions to memory means constraints carry forward without the user needing to remember to load history. DONE items (task completions) stay in day files only — they are not written to memory.
 
 Derive the memory directory from the project root (same path used for git or pwd above):
 
@@ -243,7 +254,7 @@ Additionally, if the DECISIONS section written in Step 3 is non-empty but no DEC
 
 ### Step 6 — Update the project timeline
 
-This step only applies when writing to a project subdirectory (not the top-level fallback).
+This step applies whenever writing to a subdirectory — both named project directories and `.journal/`.
 
 Count the `.md` files in the project directory, excluding `TIMELINE.md`. If there are two or more (today's file plus at least one prior day file):
 
@@ -312,11 +323,13 @@ Include in the final report: how many memories were promoted, how many were dele
 
 ### Step 1 — Identify the project and find history files
 
-Run `git rev-parse --show-toplevel` or fall back to `pwd` to derive the project name (same logic as SAVE Step 1).
+Derive the project name using the same routing rule as SAVE Step 1 (git remote basename → git root basename → empty).
 
 Look for history files in this order:
-1. `~/.claude/history/<project-name>/` — project subdirectory
-2. `~/.claude/history/` — top-level fallback (for unidentified projects or legacy flat files)
+1. `~/.claude/history/<project-name>/` — project subdirectory (git repo)
+2. `~/.claude/history/.journal/` — journal fallback (non-git sessions)
+
+Note: legacy flat files may still exist directly at `~/.claude/history/<YYYY-MM-DD>.md` from before `.journal/` routing. These can be read if a date is explicitly requested, but are not part of the normal lookup order.
 
 List `.md` files (excluding `TIMELINE.md`) sorted by date descending. If none exist, fall back to **git log reconstruction** (see Step 1b below) instead of reporting no history.
 
@@ -404,6 +417,7 @@ If `git symbolic-ref` fails (detached HEAD), `current_branch` is empty, `on_defa
 git log --stat --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short <stored-hash>..HEAD
 
 # If no stored hash — fall back to date-based anchor using --after (strictly after, not inclusive):
+# Note: do NOT substitute --since here — --since is inclusive and will re-surface commits from the boundary date itself.
 git log --stat --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short --after="<summary date>"
 ```
 

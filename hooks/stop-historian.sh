@@ -6,15 +6,17 @@ INPUT=$(cat)
 CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
 [ -z "$CWD" ] && CWD="${CLAUDE_PROJECT_DIR:-$PWD}"
 
-# Derive project name from git root, fall back to cwd basename
-PROJECT_NAME=$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null | xargs -I{} basename {})
-HOME_BASENAME=$(basename "$HOME")
+# Derive project name from git remote, fall back to git root basename
+PROJECT_NAME=$(git -C "$CWD" remote get-url origin 2>/dev/null | xargs basename -s .git 2>/dev/null)
+if [ -z "$PROJECT_NAME" ]; then
+  PROJECT_NAME=$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null)
+fi
 
-if [ -n "$PROJECT_NAME" ] && [ "$PROJECT_NAME" != "$HOME_BASENAME" ]; then
+# Use project subdirectory when in a git repo; .journal fallback for non-git sessions
+if [ -n "$PROJECT_NAME" ]; then
   HISTORY_DIR="$HOME/.claude/history/$PROJECT_NAME"
 else
-  HISTORY_DIR="$HOME/.claude/history"
-  PROJECT_NAME=$(basename "$CWD")
+  HISTORY_DIR="$HOME/.claude/history/.journal"
 fi
 
 # Fire notification if transcript is large — prompt for manual save while context is live

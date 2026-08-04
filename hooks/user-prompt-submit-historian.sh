@@ -11,15 +11,17 @@ SENTINEL="/tmp/claude-historian-${SESSION_ID}.sentinel"
 [ -f "$SENTINEL" ] || exit 0
 rm -f "$SENTINEL"
 
-# Derive project name from git root, fall back to cwd basename
-PROJECT_NAME=$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null | xargs -I{} basename {})
-HOME_BASENAME=$(basename "$HOME")
+# Derive project name from git remote, fall back to git root basename
+PROJECT_NAME=$(git -C "$CWD" remote get-url origin 2>/dev/null | xargs basename -s .git 2>/dev/null)
+if [ -z "$PROJECT_NAME" ]; then
+  PROJECT_NAME=$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null)
+fi
 
-# Use project subdirectory if we have a meaningful name; top-level fallback otherwise
-if [ -n "$PROJECT_NAME" ] && [ "$PROJECT_NAME" != "$HOME_BASENAME" ]; then
+# Use project subdirectory when in a git repo; .journal fallback for non-git sessions
+if [ -n "$PROJECT_NAME" ]; then
   HISTORY_DIR="$HOME/.claude/history/$PROJECT_NAME"
 else
-  HISTORY_DIR="$HOME/.claude/history"
+  HISTORY_DIR="$HOME/.claude/history/.journal"
 fi
 
 HISTORY_FILE=$(ls "$HISTORY_DIR"/*.md 2>/dev/null | grep -v TIMELINE | sort | tail -1)

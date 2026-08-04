@@ -30,7 +30,7 @@ The short version: built-in memory knows about you, `CLAUDE.md` knows about the 
 
 The system gets more useful the longer you run it.
 
-- **Long-term memory** — history files accumulate in `~/.claude/history/<project>/`. `TIMELINE.md` grows into a chronological arc of the project — what the branch looked like in November, what changed in January, what's open now. The context injected on day 90 is richer than day 1.
+- **Long-term memory** — history files accumulate in `~/.claude/history/<project>/` for git-backed projects and in `~/.claude/history/.journal/` for non-git sessions. `TIMELINE.md` grows into a chronological arc of the project — what the branch looked like in November, what changed in January, what's open now. The context injected on day 90 is richer than day 1.
 
 - **Hands-off documentation** — every `/save` is a structured journal entry: what was built, what was decided, what's still open. Over a long engagement this becomes a complete record of the project's evolution without anyone sitting down to write it up.
 
@@ -46,7 +46,7 @@ The system gets more useful the longer you run it.
 
 ## What gets stored
 
-History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. Each file is a short structured summary under 400 words:
+History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. For sessions with no git repo — stand-alone tasks, exploratory sessions, anything outside a project directory — files go to `~/.claude/history/.journal/YYYY-MM-DD.md` and the file header uses `journal` as the project label. Each file is a short structured summary under 400 words:
 
 ```
 # my-app — 2025-11-14
@@ -76,16 +76,16 @@ When you open Claude Code and type your first message, the prompt-submit hook fi
 
 If the history file exceeds 3000 characters, the hook injects only the STATE and OPEN sections rather than the full file, to avoid bloating the context window. A note is appended pointing to `/load` for the complete entry.
 
-`/load` is for surfacing context from a past session, not the current one. Run it with a date — `2026-07-28`, `yesterday`, `last week`, `3 days ago` — and it finds that day's history file, labels it as historical context, and runs a divergence check to show what changed between that snapshot and today. If no file exists for the requested date, it lists what's available instead of silently falling back.
+`/load` is for surfacing context from a past session, not the current one. Run it with a date — `2026-07-28`, `yesterday`, `last week`, `3 days ago` — and it finds that day's history file, labels it as historical context, and runs a divergence check to show what changed between that snapshot and today. If no file exists for the requested date, it lists what's available instead of silently falling back. If invoked with no date, `/load` explains that the hook already injected current session context and prompts you to specify a date or date range.
 
 Pass two dates to get a narrative across a range — `/load 2026-07-01 2026-07-31`. This delegates to the historian agent, which reads the day files for that span and synthesizes an arc: key decisions, significant work, and what was open at the end of the period. It's an editorial summary, not a concatenation — only what's in the day files, nothing inferred.
 
 If no history file exists for a project at all, use BACKFILL to reconstruct a scaffold from `git log` — branch state, recent commits, and diff stats. This is a cold-start aid, not a real substitute: it can only surface what's in your commit messages. Decisions, reasoning, and open questions that never made it into a commit are invisible to it. Run `/save` at the end of sessions where those things matter.
 
-**Recommended CLAUDE.md addition:** If you find Claude narrating a state check at session start ("let me check the project state...") even though the hook is already injecting context, add this to your `~/.claude/CLAUDE.md`:
+**Session-opening questions:** The routing rules installed by `install.sh` (this repo's `CLAUDE.md`, appended to your `~/.claude/CLAUDE.md`) already include a rule telling Claude to answer session-opening questions ("what's next?", "where did we leave off?", "catch me up") directly from the injected context rather than spawning the historian or re-reading history files as a ritual. If you're upgrading from an earlier version or used a partial manual install, verify your `~/.claude/CLAUDE.md` includes a "Session-opening questions" section — if not, add this:
 
 ```
-When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.
+When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.
 ```
 
 ---
@@ -94,7 +94,7 @@ When responding to session-opening questions ("what's next?", "where did we leav
 
 **What's free:** context injection at session start is a local file read — no LLM call, no tokens. The stop hook notification is a bash script. Neither costs anything.
 
-**What costs tokens:** `/save` makes one LLM call — the historian agent reads the conversation and distills a structured summary. In practice this is a small, focused call, and it pays back quickly: a single `/save` typically costs less than the tokens you'd spend re-establishing context at the start of the next session.
+**What costs tokens:** `/save` runs a pre-check first — if no commits, tool calls, or file changes occurred this session, it reports "Nothing to save" and stops without invoking the historian. When there is something to save, it makes one LLM call — the historian agent reads the conversation and distills a structured summary. In practice this is a small, focused call, and it pays back quickly: a single `/save` typically costs less than the tokens you'd spend re-establishing context at the start of the next session.
 
 **`/save` is optional.** For short sessions with no lasting decisions, skip it — the git log scaffold at next session start is usually enough to re-orient. Run `/save` when decisions were made, when something was learned that git can't capture, or when the session was long enough that re-establishing context manually would be painful.
 
@@ -146,7 +146,7 @@ This step is **opt-in and graceful** — if no `DECISION-SOURCE:` markers are fo
 bash install.sh
 ```
 
-The script installs the historian agent, `/load` and `/save` commands, and three hooks into `~/.claude/`, backing up any existing files first. If you already have a `CLAUDE.md` it appends the historian routing rules rather than overwriting it.
+The script installs the historian and researcher agents, `/load`, `/save`, and `/team-sync` commands, and three hooks into `~/.claude/`, backing up any existing files first. If you already have a `CLAUDE.md` it appends the historian routing rules rather than overwriting it.
 
 After installing, add the hooks to `~/.claude/settings.json` (Claude Code's global config — create it if it doesn't exist):
 
