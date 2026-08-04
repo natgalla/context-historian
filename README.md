@@ -9,14 +9,14 @@ Under the hood it uses three hooks and two agents:
 - A **session-start hook** leaves a sentinel so the system knows it's a fresh session
 - A **prompt-submit hook** intercepts your first message, reads the most recent summary for the current project, and injects it as context — automatically, before Claude sees your prompt
 - A **stop hook** fires a notification when your session transcript gets large, nudging you to run `/save` while context is still live
-- The **historian agent** does the real work: distilling sessions into structured summaries, synthesizing narratives across date ranges, and reconstructing history from git log when no saved summary exists. Single-date `/load` calls are handled directly by the `/load` command (no historian involved) — the historian only comes in for date-range synthesis and BACKFILL. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
+- The **historian agent** does the real work: distilling sessions into structured summaries, synthesizing narratives across date ranges, and reconstructing history from git log on explicit request (BACKFILL). Single-date `/load` calls are handled directly by the `/load` command (no historian involved) — the historian only comes in for SAVE, date-range synthesis, and BACKFILL. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
 - The **researcher agent** finds answers in docs and the web rather than memory, and emits `CITE:` tags that feed the bibliography pipeline
 
 ## How this fits with Claude Code
 
 Claude Code already has two persistence mechanisms — they do different things and context-historian doesn't replace either of them.
 
-**Built-in memory** tracks who you are: your preferences, role, recurring feedback, things to avoid. It's user-scoped and follows you across every project. context-historian doesn't touch it.
+**Built-in memory** tracks who you are: your preferences, role, recurring feedback, things to avoid. It's user-scoped and follows you across every project. context-historian doesn't touch it — and the historian doesn't write project state back into it. Branch state, blockers, and in-flight work belong in the historian day file, not in auto-memory, because that kind of state goes stale immediately and creates a secondary source that contradicts the historian.
 
 **`CLAUDE.md`** holds static project instructions you write and maintain manually — conventions, constraints, architecture notes that don't change session to session. context-historian doesn't replace it either; the two complement each other.
 
@@ -74,7 +74,7 @@ When you have multiple day files, the agent maintains a `TIMELINE.md` — a chro
 
 When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project and injects it as context — silently, automatically. By the time Claude responds to your first message, it already knows where the project stands.
 
-If the history file exceeds 3000 characters, the hook injects only the STATE and OPEN sections rather than the full file, to avoid bloating the context window. A note is appended pointing to `/load` for the complete entry.
+If the history file exceeds 3000 bytes, the hook injects only the STATE and OPEN sections rather than the full file, to avoid bloating the context window. A note is appended pointing to `/load` for the complete entry.
 
 `/load` is for surfacing context from a past session, not the current one. Run it with a date — `2026-07-28`, `yesterday`, `last week`, `3 days ago` — and it finds that day's history file, labels it as historical context, and runs a divergence check to show what changed between that snapshot and today. If no file exists for the requested date, it lists what's available instead of silently falling back. If invoked with no date, `/load` explains that the hook already injected current session context and prompts you to specify a date or date range.
 
@@ -96,7 +96,7 @@ When responding to session-opening questions ("what's next?", "where did we leav
 
 **What costs tokens:** `/save` runs a pre-check first — if no commits, tool calls, or file changes occurred this session, it reports "Nothing to save" and stops without invoking the historian. When there is something to save, it makes one LLM call — the historian agent reads the conversation and distills a structured summary. In practice this is a small, focused call, and it pays back quickly: a single `/save` typically costs less than the tokens you'd spend re-establishing context at the start of the next session.
 
-**`/save` is optional.** For short sessions with no lasting decisions, skip it — the git log scaffold at next session start is usually enough to re-orient. Run `/save` when decisions were made, when something was learned that git can't capture, or when the session was long enough that re-establishing context manually would be painful.
+**`/save` is optional.** For short sessions with no lasting decisions, skip it — running BACKFILL at the start of the next session gives you a git log scaffold that is usually enough to re-orient. Run `/save` when decisions were made, when something was learned that git can't capture, or when the session was long enough that re-establishing context manually would be painful.
 
 **What git log can't do.** Git log reconstruction gives you orientation — branch, recent commits, what changed. It cannot give you context: why a decision was made, what was tried and abandoned, what's still open. Those only exist in the conversation. If your commit messages captured all of that, your git history would be bloated and unusual. `/save` is the right place for it.
 
@@ -235,5 +235,5 @@ The agent defaults to `$HOME` as the base directory — narrow it for speed. Exi
 
 - **Notifications** — the stop hook fires a notification when the session transcript exceeds 300KB. On macOS this uses `osascript`; on Linux desktop it falls back to `notify-send` (`apt install libnotify-bin` / `dnf install libnotify`). Windows and headless environments get no notification — the hook silently skips.
 - **Date compatibility** — BACKFILL defaults to commits from the past day (yesterday onward). When passing a date range override, both BSD (`date -v-Nd`) and GNU (`date -d "N days ago"`) syntax are accepted; the agent picks whichever works on the current platform.
-- **Dependencies** — `bash`, `git`, `jq`. `bash` and `git` are standard everywhere; `jq` must be installed separately on most Linux distros (`apt install jq` or `brew install jq` on macOS if not present). `gh` (GitHub CLI) is optional — if present and authenticated, `/save` and BACKFILL will pull in PR activity automatically.
+- **Dependencies** — `bash`, `git`, `jq`. `bash` and `git` are standard everywhere; `jq` must be installed separately on most Linux distros (`apt install jq` or `brew install jq` on macOS if not present).
 - **bash version** — `install.sh` uses `[[ ]]` conditionals that require bash 4+. macOS ships bash 3.2 by default, which will cause the installer to fail — install a current bash via Homebrew (`brew install bash`) before running anything on macOS.

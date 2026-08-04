@@ -35,5 +35,12 @@ DECISION-SOURCE: slug=<slug>
 
 Use the same slug from the `CITE:` tag. Emit at the moment of the decision, not later. The historian collects both tags at `/save` time to populate `BIBLIOGRAPHY.md` — `CITE:` builds the paper trail, `DECISION-SOURCE:` marks what was load-bearing.
 
+## Backfilled history files
+
+Day files reconstructed by BACKFILL are marked with `(backfilled)` in their header (`# project — YYYY-MM-DD (backfilled)`). When one of these is injected or loaded, surface it as a best-effort reconstruction from git history — branch state and commit messages only. Do not present it with the same confidence as a session-saved summary. Context that didn't make it into commit messages (decisions, reasoning, abandoned approaches, open questions) will not appear in it.
+
 ## Session-opening questions
 When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.
+
+## Project state is not memory
+Do not write project status, blockers, or branch state to the auto-memory files (`~/.claude/projects/.../memory/`). Those entries go stale immediately and create a secondary source that contradicts the historian. State lives in the historian day file + current session context. If an auto-memory entry contains project state, delete it.

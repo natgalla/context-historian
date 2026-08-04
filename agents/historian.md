@@ -49,6 +49,86 @@ fi
 - **Git repo without a remote:** fall back to the git root basename.
 - **No git repo:** `PROJECT_NAME` is empty — this is a **journal session**. Write to `.journal/` (see Step 4).
 
+### Step 1b — Detect duplicate/split history directories
+
+Over time the same project can end up recorded under two history directories — a rename, a dots-vs-hyphens drift, or a session that started before the remote was set. This step detects that split and, only with explicit user confirmation, consolidates the two into one canonical directory.
+
+**Skip this step entirely** when the slug is empty (journal session) or the project could not be identified. There is nothing to consolidate against.
+
+The detection runs in three stages, deliberately ordered cheapest-first so the common case (no duplicate) costs almost nothing and stays silent.
+
+#### Stage 1 — Candidate scan (filenames only)
+
+List the immediate subdirectories of `~/.claude/history/`. Exclude:
+
+- The current slug (a directory cannot be a duplicate of itself)
+- `.journal`
+- `agent-*` scratch directories
+- Any directory with only one day file — a one-off scratch thread, not a project worth consolidating
+
+Whatever remains is the candidate set.
+
+#### Stage 2 — Date-range check (filenames only, no reads)
+
+For each candidate, derive `[first_date, last_date]` from its `.md` filenames (excluding `TIMELINE.md`). Discard any candidate whose `last_date` is more than **30 days** old — a long-dead directory is not a live split.
+
+For the survivors, compare each candidate's range against the current slug's range and classify:
+
+- **Sequential** — one range ends before the other begins with a gap of ≤30 days
+- **Overlapping** — the two ranges intersect
+- **Neither** — discard the candidate
+
+Only Sequential and Overlapping candidates proceed to Stage 3.
+
+#### Stage 3 — Confidence scoring (reads, only when needed)
+
+Enter this stage only for candidates that survived Stage 2. Read the minimum needed:
+
+- The **last STATE line** of the earlier directory's newest day file
+- The **first STATE/DECISIONS** of the later directory's oldest day file
+
+Score confidence. Prompt the user only when **≥2 signals align**:
+
+- Date adjacency **+** narrative overlap (same branch, feature, or open threads)
+- Date overlap alone
+- Name similarity (normalize dots↔hyphens before comparing) **+** date adjacency
+
+**Name similarity is a confidence booster, not a gate.** Very different names (e.g. `kba` vs `kba-rag-service`) can still consolidate when date and narrative signals are strong. Conversely, a name match alone never crosses the threshold.
+
+If the threshold is not met, do **not** prompt. Log a one-line note in today's day file (e.g. `<!-- possible-split: <other-slug> — below confidence threshold, not prompted -->`) and continue. This is the common case — stay silent.
+
+#### Step 1b-5 — User prompt (only when the threshold is met)
+
+Halt the pipeline and present:
+
+- Both directory names and their date ranges
+- Which signals aligned (sequential handoff, overlapping dates, narrative continuity, name similarity)
+- The proposed canonical directory — the **current slug is canonical** by default, but the prompt allows the user to override
+
+Offer three responses:
+
+- **consolidate** — merge inline per Step 1b-6, then continue the SAVE pipeline
+- **keep separate** — proceed with SAVE unchanged, and write `<!-- not-a-duplicate-of: <other-slug> -->` into the current directory's `TIMELINE.md` to suppress future prompts for this pair
+- **cancel** — abort the SAVE
+
+Before Stage 3 prompting, check the current directory's `TIMELINE.md` for an existing `<!-- not-a-duplicate-of: <other-slug> -->` marker matching the candidate. If present, treat that pair as already dismissed — skip it silently.
+
+#### Step 1b-6 — Consolidation procedure (user-confirmed only)
+
+Perform this only after the user chooses **consolidate**. Let the confirmed canonical be `<canonical>` and the absorbed directory be `<dead>`.
+
+1. **Merge day files** — for each date present in `<dead>`:
+   - Date not in `<canonical>` → copy the file verbatim, preserving its `<!-- HEAD: … -->` line
+   - Date present in both → apply the existing Step 3b merge rules (union DECISIONS/DONE/OPEN, keep the most recent STATE, deduplicate by meaning)
+2. **Merge `team/` subdir** if `<dead>` has one — same append-unique-by-date rule as day files
+3. **Regenerate TIMELINE** — delete `<dead>`'s `TIMELINE.md`. Step 6 rebuilds the canonical `TIMELINE.md` from the now-complete day-file set.
+4. **Delete dead directory** — only after every file is confirmed copied or merged, `rm -rf` the `<dead>` directory
+5. **Report** in the Step 6 final output: which directory was absorbed, how many files were copied verbatim vs merged, and confirmation of deletion
+
+**Memory note:** consolidation merges history directories only. The memory directory at `~/.claude/projects/<munged-path>/memory/` is derived from the filesystem path, not the history slug — it is **not** touched by this step.
+
+After consolidation completes, continue the SAVE pipeline from Step 2 using `<canonical>` as the project directory.
+
 ### Step 2 — Check what actually changed
 
 Use git to verify ground truth — do not rely solely on conversation:
@@ -600,6 +680,7 @@ Past day files are read-only by default. The only permitted write operations are
 
 - **SAVE Step 3b** — merging a second session into today's file (same-day merge only)
 - **BACKFILL** — writing new files for dates that have no existing file; never overwrite a file that already exists
+- **SAVE Step 1b (consolidation)** — merging a confirmed duplicate/split directory into the canonical one and deleting the emptied dead directory, only after explicit user confirmation per Step 1b-5. Day-file content is preserved (append-unique + Step 3b merge rules); no past summary content is discarded.
 
 If asked to edit, correct, rewrite, or delete content in any past day file, do not proceed silently. Surface the request first:
 
