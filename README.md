@@ -9,7 +9,7 @@ Under the hood it uses three hooks and two agents:
 - A **session-start hook** leaves a sentinel so the system knows it's a fresh session
 - A **prompt-submit hook** intercepts your first message, reads the most recent summary for the current project, and injects it as context — automatically, before Claude sees your prompt
 - A **stop hook** fires a notification when your session transcript gets large, nudging you to run `/save` while context is still live
-- The **historian agent** does the real work: distilling sessions into structured summaries, loading and diffing them against the current git state, and reconstructing history from git log when no summary exists
+- The **historian agent** does the real work: distilling sessions into structured summaries, loading and diffing them against the current git state, and reconstructing history from git log when no summary exists. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
 - The **researcher agent** finds answers in docs and the web rather than memory, and emits `CITE:` tags that feed the bibliography pipeline
 
 ## How this fits with Claude Code
@@ -34,7 +34,7 @@ The system gets more useful the longer you run it.
 
 - **Hands-off documentation** — every `/save` is a structured journal entry: what was built, what was decided, what's still open. Over a long engagement this becomes a complete record of the project's evolution without anyone sitting down to write it up.
 
-- **Stale memory detection** — the historian checks project memories at each `/save` and flags entries that no longer match reality. Outdated memories get retired rather than silently misleading future sessions.
+- **Stale memory detection** — the historian checks project memories at each `/save` and retires or updates entries that no longer match reality, so they don't silently mislead future sessions.
 
 - **Project-specific memory curation** — memories are scoped per project and curated separately from Claude Code's global user memory. During `/save`, the historian surfaces memories that may be worth promoting to `CLAUDE.md` — you review and apply them.
 
@@ -222,7 +222,7 @@ Open Claude Code in any directory and ask in plain English:
 
 > "Backfill history for my projects under ~/code"
 
-The historian agent will find all git repos under the path you name, compute a start date, and write a day file for each active day.
+The historian agent will find all git repos under the path you name, default to the past day as the start (override with a date or "N days ago" expression), and write a day file for each active day.
 
 The agent defaults to `$HOME` as the base directory — narrow it for speed. Existing session-saved files are never overwritten.
 
