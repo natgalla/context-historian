@@ -267,10 +267,11 @@ Add or update the corresponding entry in `$memory_dir/MEMORY.md`:
 
 ### Step 5c — Harvest bibliography
 
-Skip this step entirely if the project is unidentified (same condition as Step 5).
+Skip this step entirely if the project is unidentified (same condition as Step 5). **Exception: journal sessions always run this step** — use `~/.claude/history/.journal/BIBLIOGRAPHY.md` as the bibliography path instead of a repo root.
 
-Determine the project repo root (already known from Step 1). The bibliography file lives at:
-`<repo-root>/BIBLIOGRAPHY.md`
+Determine the bibliography path:
+- **Named git repo:** `<repo-root>/BIBLIOGRAPHY.md`
+- **Journal session:** `~/.claude/history/.journal/BIBLIOGRAPHY.md`
 
 #### 5c-1: Collect CITE tags
 
