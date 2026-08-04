@@ -24,14 +24,16 @@ After every SOURCE block, the researcher emits a `CITE:` tag:
 CITE: slug=<kebab-slug> url=<url-or-path> accessed=<YYYY-MM-DD>
 ```
 
-## Decision sources
-When a researcher finding backs a lasting decision, emit a `DECISION-SOURCE:` marker:
+## Citing external sources
+Any external read — whether from the researcher agent or a direct WebFetch/WebSearch call — must produce a `CITE:` tag in the response where the result is used. The slug is kebab-case for the resource (not the question); the same document cited twice uses the same slug.
+
+When a finding drives a decision, emit a `DECISION-SOURCE:` marker immediately in the same response:
 
 ```
 DECISION-SOURCE: slug=<slug>
 ```
 
-Use the same slug from the `CITE:` tag. The historian uses these at `/save` time to populate `BIBLIOGRAPHY.md`. Only emit when a finding genuinely grounds a lasting decision.
+Use the same slug from the `CITE:` tag. Emit at the moment of the decision, not later. The historian collects both tags at `/save` time to populate `BIBLIOGRAPHY.md` — `CITE:` builds the paper trail, `DECISION-SOURCE:` marks what was load-bearing.
 
 ## Session-opening questions
 When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.

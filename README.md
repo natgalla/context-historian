@@ -9,7 +9,7 @@ Under the hood it uses three hooks and two agents:
 - A **session-start hook** leaves a sentinel so the system knows it's a fresh session
 - A **prompt-submit hook** intercepts your first message, reads the most recent summary for the current project, and injects it as context — automatically, before Claude sees your prompt
 - A **stop hook** fires a notification when your session transcript gets large, nudging you to run `/save` while context is still live
-- The **historian agent** does the real work: distilling sessions into structured summaries, loading and diffing them against the current git state, and reconstructing history from git log when no summary exists. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
+- The **historian agent** does the real work: distilling sessions into structured summaries, synthesizing narratives across date ranges, and reconstructing history from git log when no saved summary exists. Single-date `/load` calls are handled directly by the `/load` command (no historian involved) — the historian only comes in for date-range synthesis and BACKFILL. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
 - The **researcher agent** finds answers in docs and the web rather than memory, and emits `CITE:` tags that feed the bibliography pipeline
 
 ## How this fits with Claude Code
@@ -104,22 +104,25 @@ When responding to session-opening questions ("what's next?", "where did we leav
 
 ## Bibliography
 
-This section is only relevant if you use the researcher agent. If you don't, skip it — nothing in the core workflow depends on it.
+Nothing in the core workflow depends on this — skip it if you don't care about source tracking.
 
-When a researcher finding backs a lasting decision, the historian tracks the source. The pipeline has three parts:
+The historian builds a bibliography of external sources consulted during a session. The pipeline has three parts:
 
-1. The **researcher** agent emits a `CITE:` tag after every source block:
+1. **Any external read** emits a `CITE:` tag — the researcher agent emits one after every source block, and the main agent emits one whenever it uses WebFetch or WebSearch directly:
    ```
    CITE: slug=<kebab-slug> url=<url-or-path> accessed=<YYYY-MM-DD>
    ```
-2. You (or your main agent) emit a `DECISION-SOURCE:` marker when that finding grounds a lasting decision:
+   The slug is kebab-case for the resource (not the question). The same document cited twice uses the same slug.
+
+2. When a finding drives a decision, the main agent emits a `DECISION-SOURCE:` marker **immediately in the same response**:
    ```
    DECISION-SOURCE: slug=<slug>
    ```
-   In practice, Claude Code emits this automatically when it decides a finding backs a lasting decision — you only type it yourself if you're coordinating manually.
-3. At `/save` time, the historian scans the session for matching marker/tag pairs and upserts entries into `BIBLIOGRAPHY.md` at the repo root.
+   The distinction matters: `CITE:` is a paper trail of everything consulted; `DECISION-SOURCE:` marks what actually drove a choice. A session with many `CITE:` tags and few `DECISION-SOURCE:` markers is normal — it means a lot was looked up but only some of it was load-bearing.
 
-This step is **opt-in and graceful** — if no `DECISION-SOURCE:` markers are found in a session, it silently skips. Nothing breaks if you don't use it.
+3. At `/save` time, the historian scans the session transcript for both tags and upserts entries into `BIBLIOGRAPHY.md` at the repo root. `CITE:` tags without a matching `DECISION-SOURCE:` still appear in the bibliography — they contribute to the reconstruction record even if they didn't explicitly drive a decision.
+
+This step is **graceful** — if no tags are found in a session, it silently skips. Nothing breaks if you don't use it.
 
 `BIBLIOGRAPHY.md` entries look like this:
 
