@@ -138,13 +138,19 @@ Cross-reference with the conversation to identify:
 
 ### Step 3 — Distill the session
 
+Capture the write time at the start of this step:
+
+```bash
+SAVE_TIME=$(date +%H:%M:%S)
+```
+
 Produce a summary under these four headings. Omit any section that has nothing to put in it.
 
 **STATE** — One or two sentences on where the project stands right now. Current branch, what's in progress, any broken/blocked state.
 
-**DECISIONS** — Bullet list. Each decision gets one line: what was decided + the reason (if given). Format: `- <decision> — <why>`. Only record decisions with lasting effect; skip process micro-decisions.
+**DECISIONS** — Bullet list. Each decision gets one line: what was decided + the reason (if given). Format: `- [HH:MM:SS] <decision> — <why>`. Only record decisions with lasting effect; skip process micro-decisions.
 
-**DONE** — Bullet list of changes confirmed in the working tree or committed. Format: `- <what changed> (<file or commit ref if available>)`. Do not list things that were tried and reverted.
+**DONE** — Bullet list of changes confirmed in the working tree or committed. Format: `- [HH:MM:SS] <what changed> (<file or commit ref if available>)`. Do not list things that were tried and reverted.
 
 **OPEN** — Unresolved questions, parked work, or known issues that weren't addressed this session. If nothing is open, omit this section entirely.
 
@@ -159,8 +165,8 @@ Apply these structural limits per section:
 Before writing, check whether a day file for today already exists at the output path. If it does, read it and merge its content with the current session's distilled summary:
 
 - **STATE** — use the current session's STATE (it reflects the most recent working tree state)
-- **DECISIONS** — union both lists; deduplicate by meaning (keep the more detailed wording when two entries cover the same decision)
-- **DONE** — union both lists; deduplicate by file or behavior (keep the more specific entry when two describe the same change)
+- **DECISIONS** — union both lists; deduplicate by meaning (keep the more detailed wording when two entries cover the same decision). Existing entries retain their original `[HH:MM:SS]` prefix; new entries from the current session use `$SAVE_TIME`.
+- **DONE** — union both lists; deduplicate by file or behavior (keep the more specific entry when two describe the same change). Same timestamp rule: preserve existing prefixes, stamp new entries with `$SAVE_TIME`.
 - **OPEN** — union both lists; drop any item that appears resolved in either session's DONE section
 
 Proceed to Step 3c with the merged content. If no file exists for today, proceed with the current session's content as-is.
@@ -257,6 +263,8 @@ project_path=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
 memory_dir="$HOME/.claude/projects/$(echo "$project_path" | sed 's|/|-|g')/memory"
 mkdir -p "$memory_dir"
 ```
+
+Normalization rule: any historian write to a memory file — create (5b), reversal-update (5a) — always writes `date: <today>` to the frontmatter, adding the field if the file lacked it. This self-migrates auto-memory files that predate the `date` field over time; no separate migration pass is needed. When updating an auto-memory file, preserve existing `node_type` and `originSessionId` keys — only add or refresh `date`.
 
 #### 5a — Retire stale memories
 

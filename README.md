@@ -34,7 +34,11 @@ The system gets more useful the longer you run it.
 
 - **Hands-off documentation** — every `/save` is a structured journal entry: what was built, what was decided, what's still open. Over a long engagement this becomes a complete record of the project's evolution without anyone sitting down to write it up.
 
+- **Decisions index** — `DECISIONS.md` grows into a lifecycle-tracked index of the project's architectural decisions, updated at every `/save`. Decisions that stay active for more than 30 days are automatically promoted to `docs/adr/` or `STANDING.md`; those unseen for more than 60 days are retired.
+
 - **Stale memory detection** — the historian checks project memories at each `/save` and retires or updates entries that no longer match reality, so they don't silently mislead future sessions.
+
+- **Split-history consolidation** — if the same project accumulated history under two different directory names (a rename, dots-vs-hyphens drift, or a session that ran before a remote was set), the historian detects this during `/save` and prompts you to consolidate. It shows both ranges, explains which signals aligned, and proposes a canonical directory. You choose to consolidate, keep them separate, or cancel — nothing merges without confirmation.
 
 - **Project-specific memory curation** — memories are scoped per project and curated separately from Claude Code's global user memory. During `/save`, the historian surfaces memories that may be worth promoting to `CLAUDE.md` — you review and apply them.
 

@@ -3,6 +3,8 @@
 ## Saving session history
 For `SAVE` (end of session, "wrap up", "I'm done for the day"), invoke the `/save` skill — it pre-checks whether anything was recorded before delegating to the historian agent. Do not summarize sessions inline.
 
+When the historian's SAVE output includes memory graduation candidates (memories eligible for promotion to `~/.claude/CLAUDE.md`), present them to the user, wait for their response, and apply the approved content blocks to `~/.claude/CLAUDE.md`. The historian outputs exactly what to write and where — relay it verbatim and apply after confirmation.
+
 Delegate to the **historian** agent directly for `BACKFILL` (reconstruct history from git).
 
 ## Loading session history
