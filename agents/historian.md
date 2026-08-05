@@ -451,8 +451,7 @@ Compute each remaining entry's age as `today − first` at evaluation time (neve
 - Do **not** delete the index entry — it is the provenance record linking the standing doc back to the day files.
 
 **Retirement candidates** — `last-seen` > 60 days ago AND `superseded`/`graduated`/`retired` all unset:
-- Set `retired: <today>` on the index entry. No external file is written.
-- Set `retired: <today>` on the index entry. Surface a note in the Step 7e report that `last-seen` is a restatement-recency signal — a decision may be silent because the session didn't touch that area, not because it was reversed.
+- Set `retired: <today>` on the index entry. No external file is written. Surface a note in the Step 7e report that `last-seen` is a restatement-recency signal — a decision may be silent because the session didn't touch that area, not because it was reversed.
 
 Update the `<!-- last-updated -->` comment to today's date on every write. Fold graduation and retirement counts into the Step 6 final report — either onto the Step 4b decisions-index line or as a separate Step 7e line (e.g. "Decisions lifecycle: N graduated, M retired").
 
