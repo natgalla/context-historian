@@ -1,6 +1,6 @@
 ---
 name: historian
-description: Session historian. SAVE summarizes the current session and writes a day file; LOAD RANGE synthesizes a narrative across a date span; BACKFILL reconstructs history from git. Invoke at session end to save, for date-range narratives, or to backfill from git. Single-date /load is handled by the load command, not this agent.
+description: Session historian. SAVE summarizes the current session and writes a day file; LOAD RANGE synthesizes a narrative across a date span; BACKFILL reconstructs history from git; TEAM-FILE writes the team activity file for /team-sync. Invoke at session end to save, for date-range narratives, to backfill from git, or to write team files. Single-date /load is handled by the load command, not this agent.
 tools: Bash, Read, Write, Grep, Glob
 ---
 

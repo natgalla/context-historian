@@ -9,7 +9,7 @@ Under the hood it uses three hooks and two agents:
 - A **session-start hook** leaves a sentinel so the system knows it's a fresh session
 - A **prompt-submit hook** intercepts your first message, reads the most recent summary for the current project, and injects it as context — automatically, before Claude sees your prompt
 - A **stop hook** fires a notification when your session transcript gets large, nudging you to run `/save` while context is still live
-- The **historian agent** does the real work: distilling sessions into structured summaries, synthesizing narratives across date ranges, and reconstructing history from git log on explicit request (BACKFILL). Single-date `/load` calls are handled directly by the `/load` command (no historian involved) — the historian only comes in for SAVE, date-range synthesis, and BACKFILL. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
+- The **historian agent** does the real work: distilling sessions into structured summaries, synthesizing narratives across date ranges, reconstructing history from git log on explicit request (BACKFILL), and writing team activity files for `/team-sync`. Single-date `/load` calls are handled directly by the `/load` command (no historian involved) — the historian only comes in for SAVE, date-range synthesis, BACKFILL, and team file writes. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
 - The **researcher agent** finds answers in docs and the web rather than memory, and emits `CITE:` tags that feed the bibliography pipeline
 
 ## How this fits with Claude Code
@@ -225,7 +225,7 @@ Open Claude Code in any directory and ask in plain English:
 
 > "Backfill history for my projects under ~/code"
 
-The historian agent will find all git repos under the path you name, default to the past day as the start (override with a date or "N days ago" expression), and write a day file for each active day.
+The historian agent will find all git repos under the path you name, default to the past day as the start (override with a date or "N days ago" expression), write a day file for each active day, and synthesize `TIMELINE.md` for each project.
 
 The agent defaults to `$HOME` as the base directory — narrow it for speed. Existing session-saved files are never overwritten.
 
