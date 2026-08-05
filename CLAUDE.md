@@ -35,6 +35,9 @@ DECISION-SOURCE: slug=<slug>
 
 Use the same slug from the `CITE:` tag. Emit at the moment of the decision, not later. The historian collects both tags at `/save` time to populate `BIBLIOGRAPHY.md` — `CITE:` builds the paper trail, `DECISION-SOURCE:` marks what was load-bearing.
 
+## Decisions index
+Alongside `TIMELINE.md` and `BIBLIOGRAPHY.md`, the historian maintains a per-project `DECISIONS.md` — a lifecycle-tracked index of architectural decisions (when each first appeared, was last restated, and whether it was superseded, graduated to a standing doc, or retired). It is maintained automatically at `/save` time; do not edit it manually.
+
 ## Backfilled history files
 
 Day files reconstructed by BACKFILL are marked with `(backfilled)` in their header (`# project — YYYY-MM-DD (backfilled)`). When one of these is injected or loaded, surface it as a best-effort reconstruction from git history — branch state and commit messages only. Do not present it with the same confidence as a session-saved summary. Context that didn't make it into commit messages (decisions, reasoning, abandoned approaches, open questions) will not appear in it.

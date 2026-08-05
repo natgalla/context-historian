@@ -68,6 +68,8 @@ History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. For sess
 
 When you have multiple day files, the agent maintains a `TIMELINE.md` — a chronological arc of the project in 1-2 bullets per day.
 
+The agent also maintains a `DECISIONS.md` — a lifecycle-tracked index of the project's architectural decisions, recording when each first appeared, when it was last restated, and whether it was superseded, graduated to a standing doc, or retired. It is updated automatically at `/save` time.
+
 ---
 
 ## How sessions connect
