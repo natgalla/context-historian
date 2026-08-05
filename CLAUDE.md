@@ -45,5 +45,8 @@ Day files reconstructed by BACKFILL are marked with `(backfilled)` in their head
 ## Session-opening questions
 When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.
 
+## History is read-only
+`~/.claude/history/` is never edited directly, under any circumstances. If the user asks to amend or correct a day file, decline and explain: all history writes go through the historian agent, which enforces its own integrity rules. There are no exceptions — not for typos, not for "quick fixes", not for user insistence.
+
 ## Project state is not memory
 Do not write project status, blockers, or branch state to the auto-memory files (`~/.claude/projects/.../memory/`). Those entries go stale immediately and create a secondary source that contradicts the historian. State lives in the historian day file + current session context. If an auto-memory entry contains project state, delete it.

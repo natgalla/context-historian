@@ -274,6 +274,8 @@ For each decision in the DECISIONS section, classify its type:
 - **project** — architectural decisions, goals, constraints, known incidents, or anything about *what's being built or why*
 - **feedback** — workflow, process, or collaboration preferences — anything about *how to work*
 
+Skip `project`-type decisions — architectural decisions are owned by DECISIONS.md (Step 4b) at the project layer. Memory is orchestration-scoped: only `feedback` and `reference` type content belongs here.
+
 Skip task completions (DONE items) — those belong in the day file only, not memory. Skip anything already covered by an existing memory file.
 
 Read `$memory_dir/MEMORY.md` if it exists to check for an existing entry covering the same topic. If one exists, update that file in place. If not, create a new file named `<kebab-case-slug>.md`.
@@ -412,7 +414,7 @@ Read `~/.claude/CLAUDE.md`. For each eligible candidate, assess whether the memo
 
 Display a summary of all eligible candidates grouped by verdict:
 
-**Ready to promote (not yet in CLAUDE.md):**
+**Eligible for graduation to CLAUDE.md (no action required this session):**
 - For each: show the memory name, its body content, the age and source used (e.g. "28 days — from `date:` field" or "14 days — from mtime"), and the proposed CLAUDE.md section (inferred by reading current CLAUDE.md section headings and matching the memory's content to the closest fit; if nothing fits, propose a new section name)
 
 **Redundant (already in CLAUDE.md):**

@@ -46,7 +46,7 @@ The system gets more useful the longer you run it.
 
 ## What gets stored
 
-History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. For sessions with no git repo — stand-alone tasks, exploratory sessions, anything outside a project directory — files go to `~/.claude/history/.journal/YYYY-MM-DD.md` and the file header uses `journal` as the project label. Each file is a short structured summary under 400 words:
+History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. For sessions with no git repo — stand-alone tasks, exploratory sessions, anything outside a project directory — files go to `~/.claude/history/.journal/YYYY-MM-DD.md` and the file header uses `journal` as the project label. Each file is a short structured summary with per-section caps (STATE: 2 sentences, DECISIONS: 10 bullets, DONE: 15 bullets, OPEN: 5 bullets):
 
 ```
 # my-app — 2025-11-14
@@ -122,7 +122,7 @@ The historian builds a bibliography of external sources consulted during a sessi
    ```
    The distinction matters: `CITE:` is a paper trail of everything consulted; `DECISION-SOURCE:` marks what actually drove a choice. A session with many `CITE:` tags and few `DECISION-SOURCE:` markers is normal — it means a lot was looked up but only some of it was load-bearing.
 
-3. At `/save` time, the historian scans the session transcript for both tags and upserts entries into `BIBLIOGRAPHY.md` at the repo root. `CITE:` tags without a matching `DECISION-SOURCE:` still appear in the bibliography — they contribute to the reconstruction record even if they didn't explicitly drive a decision.
+3. At `/save` time, the historian scans the session transcript for both tags and upserts entries into `BIBLIOGRAPHY.md` at the repo root. For journal sessions (no git repo), `BIBLIOGRAPHY.md` is written to `~/.claude/history/.journal/BIBLIOGRAPHY.md` instead. `CITE:` tags without a matching `DECISION-SOURCE:` still appear in the bibliography — they contribute to the reconstruction record even if they didn't explicitly drive a decision.
 
 This step is **graceful** — if no tags are found in a session, it silently skips. Nothing breaks if you don't use it.
 
