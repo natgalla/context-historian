@@ -9,7 +9,7 @@ Under the hood it uses three hooks and two agents:
 - A **session-start hook** leaves a sentinel so the system knows it's a fresh session
 - A **prompt-submit hook** intercepts your first message, reads the most recent summary for the current project, and injects it as context — automatically, before Claude sees your prompt
 - A **stop hook** fires a notification when your session transcript gets large, nudging you to run `/save` while context is still live
-- The **historian agent** does the real work: distilling sessions into structured summaries, synthesizing narratives across date ranges, reconstructing history from git log on explicit request (BACKFILL), and writing team activity files for `/team-sync`. Single-date `/load` calls are handled directly by the `/load` command (no historian involved) — the historian only comes in for SAVE, date-range synthesis, BACKFILL, and team file writes. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
+- The **historian agent** does the real work: distilling sessions into structured summaries, synthesizing narratives across date ranges, and reconstructing history from git log on explicit request (BACKFILL). Single-date `/load` calls are handled directly by the `/load` command (no historian involved), and `/team-sync` writes its own team files directly — the historian only comes in for SAVE, date-range synthesis, and BACKFILL. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
 - The **researcher agent** finds answers in docs and the web rather than memory, and emits `CITE:` tags that feed the bibliography pipeline
 
 ## How this fits with Claude Code
@@ -17,6 +17,8 @@ Under the hood it uses three hooks and two agents:
 Claude Code already has two persistence mechanisms — they do different things and context-historian doesn't replace either of them.
 
 **Built-in memory** tracks who you are: your preferences, role, recurring feedback, things to avoid. It's user-scoped and follows you across every project. context-historian doesn't touch it — and the historian doesn't write project state back into it. Branch state, blockers, and in-flight work belong in the historian day file, not in auto-memory, because that kind of state goes stale immediately and creates a secondary source that contradicts the historian.
+
+**Recommended:** redirect Claude Code's auto-memory engine away from the historian's memory directory. Claude Code reads from `~/.claude/projects/*/memory/` and injects `MEMORY.md` into every turn automatically — which conflicts with the historian's model of reading memory on demand rather than injecting it wholesale. Adding `"autoMemoryDirectory": "~/.claude/cc-auto-memory"` to `~/.claude/settings.json` points the engine at a separate directory, leaving your historian memory files untouched and loaded only when relevant.
 
 **`CLAUDE.md`** holds static project instructions you write and maintain manually — conventions, constraints, architecture notes that don't change session to session. context-historian doesn't replace it either; the two complement each other.
 
@@ -34,7 +36,9 @@ The system gets more useful the longer you run it.
 
 - **Hands-off documentation** — every `/save` is a structured journal entry: what was built, what was decided, what's still open. Over a long engagement this becomes a complete record of the project's evolution without anyone sitting down to write it up.
 
-- **Decisions index** — `DECISIONS.md` grows into a lifecycle-tracked index of the project's architectural decisions, updated at every `/save`. Decisions that stay active for more than 30 days are automatically promoted to `docs/adr/` or `STANDING.md`; those unseen for more than 60 days are retired.
+- **Decisions index** — `DECISIONS.md` grows into a lifecycle-tracked index of the project's architectural decisions, updated at every `/save`. Decisions that are more than 30 days old **and** were restated within the last 14 days are automatically promoted to `docs/adr/` or `STANDING.md`; those unseen for more than 60 days are retired. (A decision that has simply gone quiet without being reversed is retired, not promoted — the 14-day recency condition is what distinguishes the two.)
+
+- **Arcs index** — `ARCS.md` tracks ongoing and completed work arcs. To start tracking an arc, prefix an OPEN item with a kebab-case slug on first appearance: `[auth-refactor] Replace legacy session tokens`. Carry the same slug forward when the item recurs in later sessions. New arcs are opened automatically when a slugged OPEN item first appears; they close when the item moves to DONE. Once any arcs exist, `TIMELINE.md` is generated from `ARCS.md` rather than from day files directly, giving a theme-organized view instead of a date-organized one. Stale arcs (open more than 60 days, quiet more than 30 days) are surfaced at `/save` time for user confirmation — never auto-closed.
 
 - **Stale memory detection** — the historian checks project memories at each `/save` and retires or updates entries that no longer match reality, so they don't silently mislead future sessions.
 
@@ -42,7 +46,7 @@ The system gets more useful the longer you run it.
 
 - **Project-specific memory curation** — memories are scoped per project and curated separately from Claude Code's global user memory. During `/save`, the historian surfaces memories that may be worth promoting to `CLAUDE.md` — you review and apply them.
 
-- **Backfillable** — already have a project with months of git history but no historian files? BACKFILL reconstructs day files from `git log` so you're not starting from zero. Existing session-saved files are never overwritten.
+- **Backfillable** — already have a project with months of git history but no historian files? BACKFILL reconstructs day files from `git log` so you're not starting from zero. Existing session-saved files are never overwritten. Backfilled files are marked `(backfilled)` in their header — `# my-app — 2025-11-14 (backfilled)` — so they're visually distinguishable from session-saved summaries and treated as lower-confidence reconstructions.
 
 - **History integrity** — if you ask the historian agent to amend a prior summary, it surfaces the request, quotes the contested text, and requires explicit justification before touching anything. Requests to soften wording or revise narrative without a demonstrable factual error are declined. This covers agent-mediated changes — you can always edit the files directly, and sometimes that's the right call. The protection exists so casual revision requests don't slip through unexamined.
 
@@ -70,9 +74,13 @@ History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. For sess
 <!-- HEAD: a3f9c21 -->
 ```
 
-When you have multiple day files, the agent maintains a `TIMELINE.md` — a chronological arc of the project in 1-2 bullets per day.
+When you have multiple day files, the agent maintains a `TIMELINE.md`. When an `ARCS.md` exists, the timeline is arc-organized — one section per work arc with per-day notes pulled from the source day files, open arcs listed first. Before any arcs have been tracked, it falls back to a chronological day-by-day format (1-2 bullets per day). Either way it is regenerated from scratch on every `/save`.
 
 The agent also maintains a `DECISIONS.md` — a lifecycle-tracked index of the project's architectural decisions, recording when each first appeared, when it was last restated, and whether it was superseded, graduated to a standing doc, or retired. It is updated automatically at `/save` time.
+
+The agent also maintains an `ARCS.md` — an index of ongoing and completed work arcs. OPEN items that use `[arc-slug]` syntax are tracked here automatically. When an arc closes (its OPEN item moves to DONE), the index records which session and commit closed it. `ARCS.md` is what drives arc-organized `TIMELINE.md` generation once at least one arc exists.
+
+If you run `/save` more than once on the same day, the historian merges rather than overwrites — STATE is updated to the latest session, and DECISIONS/DONE/OPEN are unioned and deduplicated. Running `/save` twice is safe.
 
 ---
 
@@ -82,7 +90,7 @@ When you open Claude Code and type your first message, the prompt-submit hook fi
 
 If the history file exceeds 3000 bytes, the hook injects only the STATE and OPEN sections rather than the full file, to avoid bloating the context window. A note is appended pointing to `/load` for the complete entry.
 
-`/load` is for surfacing context from a past session, not the current one. Run it with a date — `2026-07-28`, `yesterday`, `last week`, `3 days ago` — and it finds that day's history file, labels it as historical context, and runs a divergence check to show what changed between that snapshot and today. If no file exists for the requested date, it lists what's available instead of silently falling back. If invoked with no date, `/load` explains that the hook already injected current session context and prompts you to specify a date or date range.
+`/load` is for surfacing context from a past session, not the current one. Run it with a date — `2026-07-28`, `yesterday`, `last week`, `3 days ago` — and it finds that day's history file. If a `TIMELINE.md` exists for the project, it's presented first as a project arc overview; then the day file is shown, labeled as historical context; then a divergence check shows what changed between that snapshot and today. If no file exists for the requested date, it lists what's available instead of silently falling back. If invoked with no date, `/load` explains that the hook already injected current session context and prompts you to specify a date or date range.
 
 Pass two dates to get a narrative across a range — `/load 2026-07-01 2026-07-31`. This delegates to the historian agent, which reads the day files for that span and synthesizes an arc: key decisions, significant work, and what was open at the end of the period. It's an editorial summary, not a concatenation — only what's in the day files, nothing inferred.
 
@@ -128,7 +136,7 @@ The historian builds a bibliography of external sources consulted during a sessi
 
 3. At `/save` time, the historian scans the session transcript for both tags and upserts entries into `BIBLIOGRAPHY.md` at the repo root. For journal sessions (no git repo), `BIBLIOGRAPHY.md` is written to `~/.claude/history/.journal/BIBLIOGRAPHY.md` instead. `CITE:` tags without a matching `DECISION-SOURCE:` still appear in the bibliography — they contribute to the reconstruction record even if they didn't explicitly drive a decision.
 
-This step is **graceful** — if no tags are found in a session, it silently skips. Nothing breaks if you don't use it.
+This step is **graceful** — if no tags are found in a session, the historian reports "Bibliography: skipped (no CITE tags this session)" and moves on. Nothing breaks if you don't use it.
 
 `BIBLIOGRAPHY.md` entries look like this:
 
@@ -234,6 +242,8 @@ Open Claude Code in any directory and ask in plain English:
 The historian agent will find all git repos under the path you name, default to the past day as the start (override with a date or "N days ago" expression), write a day file for each active day, and synthesize `TIMELINE.md` for each project.
 
 The agent defaults to `$HOME` as the base directory — narrow it for speed. Existing session-saved files are never overwritten.
+
+BACKFILL writes day files and `TIMELINE.md` only — it does not populate `DECISIONS.md` or `ARCS.md`. Those indexes start building from your first real `/save`.
 
 ---
 
