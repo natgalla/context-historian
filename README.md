@@ -18,7 +18,7 @@ Claude Code already has two persistence mechanisms — they do different things 
 
 **Built-in memory** tracks who you are: your preferences, role, recurring feedback, things to avoid. It's user-scoped and follows you across every project. context-historian doesn't touch it — and the historian doesn't write project state back into it. Branch state, blockers, and in-flight work belong in the historian day file, not in auto-memory, because that kind of state goes stale immediately and creates a secondary source that contradicts the historian.
 
-**Recommended:** redirect Claude Code's auto-memory engine away from the historian's memory directory. Claude Code reads from `~/.claude/projects/*/memory/` and injects `MEMORY.md` into every turn automatically — which conflicts with the historian's model of reading memory on demand rather than injecting it wholesale. Adding `"autoMemoryDirectory": "~/.claude/cc-auto-memory"` to `~/.claude/settings.json` points the engine at a separate directory, leaving your historian memory files untouched and loaded only when relevant.
+**Recommended:** disable Claude Code's auto-memory engine. Claude Code reads from `~/.claude/projects/*/memory/` and injects `MEMORY.md` into every turn automatically — which conflicts with the historian's model of reading memory on demand rather than injecting it wholesale. Adding `"autoMemoryEnabled": false` to `~/.claude/settings.json` turns the engine off entirely, leaving your historian memory files untouched and loaded only when relevant.
 
 **`CLAUDE.md`** holds static project instructions you write and maintain manually — conventions, constraints, architecture notes that don't change session to session. context-historian doesn't replace it either; the two complement each other.
 

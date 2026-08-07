@@ -102,17 +102,34 @@ If a fallback notice was issued in Step 1b, prepend it to the output.
 
 ---
 
-## Step 5 — Delegate team file write to historian
+## Step 5 — Write the team file
 
-Do not write to `~/.claude/history/` directly. Pass the composed output to the historian agent in TEAM-FILE mode with the following context:
+Write the team activity file directly. team-sync owns its own file write — the historian owns synthesis, not this file.
 
-- `project`: the directory basename from Step 1a
-- `prose`: the full output from Step 4
-- `as_of_commit`: result of `git rev-parse HEAD`
-- `anchor`: the anchor hash or date used in Step 1b
-- `date`: today's date (YYYY-MM-DD)
+1. Determine the output path and create the directory:
 
-The historian owns all writes to `~/.claude/history/`.
+```bash
+mkdir -p ~/.claude/history/<project>/team
+```
+
+Output path: `~/.claude/history/<project>/team/<date>.md`, where `<project>` is the basename from Step 1a and `<date>` is today's date (`YYYY-MM-DD`).
+
+2. Write the file with the Write tool (or a bash heredoc):
+
+```markdown
+# <project> — team activity — <date>
+
+as_of_commit: <as_of_commit>
+anchor: <anchor>
+
+<prose>
+```
+
+Where `as_of_commit` = result of `git rev-parse HEAD`, `anchor` = the anchor hash or date from Step 1b, `prose` = the composed output from Step 4.
+
+3. If a file already exists at that path, overwrite it.
+
+4. Confirm the file path written. Do not print the file contents.
 
 ---
 

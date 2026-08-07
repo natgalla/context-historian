@@ -15,7 +15,7 @@ Delegate to the **historian** agent directly for `BACKFILL` (reconstruct history
 If `/load` is invoked with no arguments, explain that the prompt-submit hook already injected current session context and ask which date (or date range) the user wants.
 
 ## Team sync
-`/team-sync` is handled by the team-sync command. The historian agent is invoked only for the final file write (TEAM-FILE mode) — the command owns collection and composition. Do not spawn the full SAVE pipeline for team-sync calls.
+`/team-sync` is handled by the team-sync command, which collects commits, composes the summary, and writes the team file directly. The historian agent is not invoked. Do not spawn the full SAVE pipeline for team-sync calls.
 
 ## Researcher agent
 Delegate factual questions that require reading documentation to the **researcher** agent — API behavior, library docs, version constraints, external specs. Do not answer from memory or fetch docs inline.
@@ -37,8 +37,12 @@ DECISION-SOURCE: slug=<slug>
 
 Use the same slug from the `CITE:` tag. Emit at the moment of the decision, not later. The historian collects both tags at `/save` time to populate `BIBLIOGRAPHY.md` — `CITE:` builds the paper trail, `DECISION-SOURCE:` marks what was load-bearing.
 
-## Decisions index
-Alongside `TIMELINE.md` and `BIBLIOGRAPHY.md`, the historian maintains a per-project `DECISIONS.md` — a lifecycle-tracked index of architectural decisions (when each first appeared, was last restated, and whether it was superseded, graduated to a standing doc, or retired). It is maintained automatically at `/save` time; do not edit it manually.
+## Decisions and arcs indexes
+Alongside `TIMELINE.md` and `BIBLIOGRAPHY.md`, the historian maintains two per-project indexes automatically at `/save` time — do not edit any of these files manually. (`TIMELINE.md` is regenerated from scratch on every `/save`; the others are append/upsert updated.)
+
+`DECISIONS.md` — a lifecycle-tracked index of architectural decisions (when each first appeared, was last restated, and whether it was superseded, graduated to a standing doc, or retired).
+
+`ARCS.md` — an index of work arcs: ongoing and completed threads tracked via the `[arc-slug]` syntax in OPEN items. When `ARCS.md` exists, `TIMELINE.md` leads with arc-organized sections followed by a full chronological section — both views coexist in one file. Stale arcs (open >60 days, quiet >30 days) are surfaced in `/save` output for user confirmation — never auto-closed.
 
 ## Backfilled history files
 

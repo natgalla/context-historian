@@ -1,6 +1,6 @@
 ---
 name: historian
-description: Session historian. SAVE summarizes the current session and writes a day file; LOAD RANGE synthesizes a narrative across a date span; BACKFILL reconstructs history from git; TEAM-FILE writes the team activity file for /team-sync. Invoke at session end to save, for date-range narratives, to backfill from git, or to write team files. Single-date /load is handled by the load command, not this agent.
+description: Session historian. SAVE (primary) summarizes the current session and writes a day file; LOAD RANGE synthesizes a narrative across a date span; BACKFILL reconstructs history from git. Invoke at session end to save, for date-range narratives, or to backfill from git. Single-date /load and team file writes are handled by their respective commands, not this agent.
 tools: Bash, Read, Write, Grep, Glob
 ---
 
@@ -13,16 +13,6 @@ Ignore these global CLAUDE.md rules — they are meant for the main agent: plann
 Apply these: scope discipline, no invented context, no secrets in output, credential file permissions if writing files.
 
 Do not retroactively revise past summaries — amend only when a factual error can be clearly demonstrated, never to improve the narrative or align with a preferred outcome.
-
-## Determine mode
-
-If the caller says "save" or "wrap up" → **SAVE mode**.
-If the caller says "load" or "catch me up", or this is the start of a new session → **LOAD mode**.
-If the caller says "LOAD range" followed by two dates → **LOAD RANGE mode**.
-If the caller says "backfill" or "reconstruct from git" → **BACKFILL mode**.
-If unclear, ask: "Save the current session, load the last one, load a date range, or backfill from git history?"
-
----
 
 ## SAVE mode
 
@@ -152,7 +142,7 @@ Produce a summary under these four headings. Omit any section that has nothing t
 
 **DONE** — Bullet list of changes confirmed in the working tree or committed. Format: `- [HH:MM:SS] <what changed> (<file or commit ref if available>)`. Do not list things that were tried and reverted.
 
-**OPEN** — Unresolved questions, parked work, or known issues that weren't addressed this session. If nothing is open, omit this section entirely.
+**OPEN** — Unresolved questions, parked work, or known issues that weren't addressed this session. If nothing is open, omit this section entirely. OPEN items representing ongoing work (an arc that spans sessions, not a one-off question) should use slug syntax on first appearance: `[arc-slug] <description>`. The slug is kebab-case, same convention as decisions. On subsequent sessions, carry the slug forward when the item recurs.
 
 Apply these structural limits per section:
 - **STATE:** max 2 sentences
@@ -246,6 +236,48 @@ Entry format:
 - **retired:** —
 - **source:** 2026-06-12.md, 2026-07-29.md, 2026-08-05.md
 - **summary:** Raw SQL for all reporting queries — ORM produced N+1 problems on the aggregation layer and query plans were unreadable.
+```
+
+Update the `<!-- last-updated -->` comment to today's date on every write.
+
+### Step 4c — Maintain ARCS.md
+
+After maintaining `DECISIONS.md`, maintain a per-project arcs index at `~/.claude/history/<project-name>/ARCS.md`.
+
+**Skip this step entirely** when any of these hold:
+- The project is unidentified (generic basename)
+- This is a **BACKFILL** run
+
+**First run** — if `ARCS.md` does not exist, create it with this header:
+
+```markdown
+# Arcs
+
+Ongoing and completed work arcs for this project.
+Maintained by the historian agent — do not edit manually.
+
+<!-- Schema: opened (immutable), closed (YYYY-MM-DD or —), closed-by (DONE item or commit ref or —),
+     source (day-file dates), summary (one sentence: what the arc was and why it existed). -->
+<!-- last-updated: YYYY-MM-DD -->
+```
+
+**Cross-reference OPEN items** that carry slug syntax `[arc-slug]` against the existing `### <slug>` entries in `ARCS.md`:
+
+- **Slugged OPEN item not in ARCS.md** → create a new entry: `opened = today`, `closed = —`, `closed-by = —`, `source = [today]`, and derive a one-sentence summary from the item description. If this is the **first SAVE that creates ARCS.md** and the project already has day files older than today, append `<!-- tracking-start: work may predate this; first slugged OPEN appearance -->` to the `opened` line of every arc entry created in this session. This signals that earlier history predates the index. Do not add this comment on subsequent SAVEs once ARCS.md already exists.
+- **Slugged OPEN item already in ARCS.md** → append today to `source` (idempotent — a second same-day SAVE must not duplicate the date).
+- **Slugged OPEN item that moved to DONE this session** → set `closed = today`, `closed-by = <the DONE item text or commit ref>`, and append today to `source`.
+- **Existing open arc** (`closed = —`) with no matching OPEN item this session → leave it as-is. Silence is not closure.
+
+Entry format:
+
+```markdown
+### auth-refactor
+
+- **opened:** 2026-07-14
+- **closed:** —
+- **closed-by:** —
+- **source:** 2026-07-14.md, 2026-07-22.md
+- **summary:** Replacing legacy session tokens with Stripe-backed auth — driven by PCI scope reduction goal.
 ```
 
 Update the `<!-- last-updated -->` comment to today's date on every write.
@@ -384,10 +416,35 @@ Additionally, if the DECISIONS section written in Step 3 is non-empty but no CIT
 
 This step applies whenever writing to a subdirectory — both named project directories and `.journal/`.
 
-Count the `.md` files in the project directory, excluding `TIMELINE.md`. If there are two or more (today's file plus at least one prior day file):
+**1. If `ARCS.md` exists** — read it and generate `TIMELINE.md` with arc sections at the top, followed by a full chronological section. Format:
 
-1. Read all day files in chronological order (oldest first, by filename date).
-2. Synthesize a `TIMELINE.md` in the same directory. Format:
+```
+# <project-name> — Timeline
+
+## <arc-slug> (<opened> → <closed or "open">)
+<summary sentence>
+- <YYYY-MM-DD>: <1-line note from that day's DONE or DECISIONS — derive from the source day files listed for this arc>
+- ...
+
+## <next arc>
+...
+
+---
+
+## Chronological
+
+### <YYYY-MM-DD>
+- <1-2 bullet points: key decisions or changes from that day>
+
+### <YYYY-MM-DD>
+- ...
+```
+
+List open arcs first (sorted by `opened` date descending), then closed arcs (sorted by `closed` date descending). For each arc, derive the per-day notes from the day files named in its `source` list.
+
+After the arc sections, always append a `---` separator and a `## Chronological` section covering **all** day files in date order (oldest first). Format identically to the fallback (### YYYY-MM-DD, 1-2 bullets). The chronological section is always present — it is the complete record regardless of arc coverage.
+
+**2. If `ARCS.md` does not exist** (first sessions before any slugged OPEN items) — fall back to the day-file behavior. Count the `.md` files in the project directory, excluding `TIMELINE.md`. If there are two or more (today's file plus at least one prior day file), read all day files in chronological order (oldest first, by filename date) and synthesize a `TIMELINE.md`:
 
 ```
 # <project-name> — Timeline
@@ -401,7 +458,7 @@ Count the `.md` files in the project directory, excluding `TIMELINE.md`. If ther
 
 Keep each day entry to 1-2 lines. Overwrite `TIMELINE.md` on every save so it stays current.
 
-After writing, report the file path and word count. Do not print the full summary back to the caller — just confirm it was saved and where, note whether the timeline was updated, list any memory entries written, list any memory entries retired or updated as stale, report bibliography activity (new entries, updated entries, or skipped — per Step 5c-5), report decisions-index activity as a single line: "Decisions index: N new, M last-seen bumps, K superseded, L graduated, R retired" (Step 4b populates the first three counts; Step 7e appends the last two; omit zero-count fields), and report how many memories were promoted or deleted as redundant (Step 7). If Steps 5, 5c, or memory processing were skipped because the project could not be identified, say so explicitly in the report: "Memory/bibliography: skipped — project name could not be identified. Run from a named git repo to enable these steps."
+After writing, report the file path and word count. Do not print the full summary back to the caller — just confirm it was saved and where, note whether the timeline was updated, list any memory entries written, list any memory entries retired or updated as stale, report bibliography activity (new entries, updated entries, or skipped — per Step 5c-5), report decisions-index activity as a single line: "Decisions index: N new, M last-seen bumps, K superseded, L graduated, R retired" (Step 4b populates the first three counts; Step 7e appends the last two; omit zero-count fields), report arcs-index activity as a single line: "Arcs index: N new, M updated, K closed" (Step 4c; omit zero-count fields), and report how many memories were promoted or deleted as redundant (Step 7). If Steps 5, 5c, or memory processing were skipped because the project could not be identified, say so explicitly in the report: "Memory/bibliography: skipped — project name could not be identified. Run from a named git repo to enable these steps."
 
 ### Step 7 — Graduate mature memories to CLAUDE.md
 
@@ -465,150 +522,19 @@ Compute each remaining entry's age as `today − first` at evaluation time (neve
 
 Update the `<!-- last-updated -->` comment to today's date on every write. Fold graduation and retirement counts into the Step 6 final report — either onto the Step 4b decisions-index line or as a separate Step 7e line (e.g. "Decisions lifecycle: N graduated, M retired").
 
----
+### Step 7f — Stale arc detection
 
-## LOAD mode
+Evaluate the open arcs in `ARCS.md` (those with `closed = —`). **Skip this step entirely** when `ARCS.md` does not exist or has no open arcs.
 
-### Step 1 — Identify the project and find history files
+For each open arc, compute days since `opened` and days since it last appeared in `source` (the most recent date in the source list).
 
-Derive the project name using the same routing rule as SAVE Step 1 (git remote basename → git root basename → empty).
-
-Look for history files in this order:
-1. `~/.claude/history/<project-name>/` — project subdirectory (git repo)
-2. `~/.claude/history/.journal/` — journal fallback (non-git sessions)
-
-Note: legacy flat files may still exist directly at `~/.claude/history/<YYYY-MM-DD>.md` from before `.journal/` routing. These can be read if a date is explicitly requested, but are not part of the normal lookup order.
-
-List `.md` files (excluding `TIMELINE.md`) sorted by date descending. If none exist, fall back to **git log reconstruction** (see Step 1b below) instead of reporting no history.
-
-### Step 1b — Git log fallback (no history files found)
-
-Use `%x1f` (ASCII unit separator) and `%x1e` (ASCII record separator) as delimiters — these cannot appear in commit messages, making the parse safe against bodies that contain `|`, colons, or span multiple lines.
-
-```bash
-git log --format="%x1f%ad%x1f%H%x1f%s%x1f%b%x1e" --date=short --reverse
-```
-
-Split the output on `%x1e` to get one record per commit. Within each record, split on `%x1f` to get fields: date, hash, subject, body. The body may be empty or multi-line — treat everything after the fourth `%x1f` as the body.
-
-Group commits by date. For each day, gather diff stats:
-
-```bash
-# First, detect whether the earliest commit of the day is a root commit (no parent):
-git rev-parse --verify <first-commit-of-day>^ 2>/dev/null
-
-# If the above succeeds (non-root), use the range form:
-git diff --stat <first-commit-of-day>^..<last-commit-of-day>
-
-# If it fails (root commit), use show for the root commit separately:
-git show --stat <first-commit-of-day>
-# Then for subsequent commits on the same day (if any):
-git diff --stat <first-commit-of-day>..<last-commit-of-day>
-```
-
-Use each commit's body to populate DECISIONS when it contains rationale; use the subject for DONE entries. Synthesize a catch-up summary in the same four-section format used by SAVE (STATE, DECISIONS, DONE, OPEN), derived strictly from commit messages and diff stats — do not invent context. Mark it clearly:
+Surface arcs where: age > 60 days **AND** last source appearance > 30 days ago. Present these as a stale-arc notice in the Step 6 report:
 
 ```
-> Reconstructed from git history — no saved session found.
+Stale arcs (open >60 days, quiet >30 days): [arc-slug] (opened YYYY-MM-DD, last seen YYYY-MM-DD) — confirm still active or close manually in ARCS.md
 ```
 
-Present the reconstructed summary as the LOAD output. Do not write it to disk automatically. After presenting, always offer: "This was reconstructed from git history — no saved session file exists. Would you like me to save it?" If the user says yes, run SAVE mode.
-
-### Step 2 — Surface the timeline (if present)
-
-If `TIMELINE.md` exists in the project directory, read and present it first as a project arc overview, then present the most recent day file in full.
-
-If no `TIMELINE.md` exists, present just the most recent day file in full — do not compress it further, since it was already written to be concise.
-
-### Step 3 — Check for git divergence
-
-Check if the git state has diverged since the most recent summary was written.
-
-First, silently fetch remote refs so the check reflects the true remote state. This never modifies the working tree or local branches:
-
-```bash
-git fetch --quiet 2>/dev/null
-```
-
-If the fetch fails (no remote configured, network unavailable), continue — the check will still work against any already-fetched remote refs.
-
-Next, detect the default remote branch:
-
-```bash
-# Preferred: read what origin/HEAD resolves to
-default_branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's|refs/remotes/origin/||')
-
-# Fall back to probing common names
-if [ -z "$default_branch" ]; then
-  git rev-parse --verify origin/main >/dev/null 2>&1 && default_branch="main"
-fi
-if [ -z "$default_branch" ]; then
-  git rev-parse --verify origin/master >/dev/null 2>&1 && default_branch="master"
-fi
-# If still empty, skip the default-branch check below
-```
-
-Determine whether the current branch is already the default branch (to avoid double-counting):
-
-```bash
-current_branch=$(git symbolic-ref --short HEAD 2>/dev/null)
-on_default_branch=false
-[ "$current_branch" = "$default_branch" ] && on_default_branch=true
-```
-
-If `git symbolic-ref` fails (detached HEAD), `current_branch` is empty, `on_default_branch` stays false, and the default-branch check proceeds normally.
-
-**Branch-local check:** Look for a stored HEAD hash in the day file — a line matching `<!-- HEAD: <hash> -->`. Use a single combined pass for both authorship and diff stats:
-
-```bash
-# If a stored HEAD hash was found — most precise anchor:
-git log --stat --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short <stored-hash>..HEAD
-
-# If no stored hash — fall back to date-based anchor using --after (strictly after, not inclusive):
-# Note: do NOT substitute --since here — --since is inclusive and will re-surface commits from the boundary date itself.
-git log --stat --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short --after="<summary date>"
-```
-
-Store the result as the **branch-local commits** set.
-
-**Default-branch check:** If `$default_branch` is non-empty and `$on_default_branch` is false, find the point where the current branch diverged from the default branch and surface anything that has landed on the default branch since then:
-
-```bash
-merge_base=$(git merge-base HEAD origin/$default_branch 2>/dev/null)
-```
-
-If `merge-base` fails (unrelated histories, no common ancestor), skip this check. Otherwise query commits on `origin/$default_branch` reachable from the merge base but not from HEAD:
-
-```bash
-git log --format="%x1f%ad%x1f%ae%x1f%s%x1f" --date=short \
-  $merge_base..origin/$default_branch \
-  --not HEAD
-```
-
-This is branch-aware and needs no stored hash or date math — it naturally answers "what landed on main that I haven't seen yet." Store the result as the **default-branch commits** set.
-
-If both sets are empty, skip this step entirely.
-
-Partition the branch-local commits into two groups using the author email field (`%ae`):
-- **Your changes** — commits where the author email matches `$(git config user.email)`
-- **Teammate changes** — all other authors, grouped by author name/email
-
-Synthesize a catch-up section — do not list raw hashes, summarize what actually changed. The branch-local section is the primary context for resuming your work; the default-branch section is a brief prose footnote:
-
-```
-SINCE LAST SUMMARY (<date> → today)
-
-Your changes:
-- <what changed, referencing files or behavior>
-
-Teammates (this branch):     ← omit if no teammate commits on this branch
-- <Author Name>: <what they landed>
-
-Meanwhile on <default_branch>:     ← omit entirely if default-branch set is empty
-<one sentence — just enough to flag that something landed, e.g. "Sarah merged the auth refactor and two dependency bumps.">
-```
-
-If all branch-local commits are by the same author, omit the author grouping and write a single "Your changes" paragraph. If the branch-local set is empty (no commits since the save), omit that group. Keep the entire section under 150 words.
+Do **not** auto-close stale arcs — surface them for user confirmation only.
 
 ---
 
@@ -618,9 +544,11 @@ Synthesize a narrative across a span of day files — an editorial summary that 
 
 ### Step 1 — Identify the project and resolve dates
 
-Same project identification logic as LOAD Step 1. Resolve `<start-date>` and `<end-date>` to `YYYY-MM-DD`.
+Same project identification logic as SAVE Step 1 (git remote basename → git root basename → empty). Resolve `<start-date>` and `<end-date>` to `YYYY-MM-DD`.
 
 ### Step 2 — Collect source material
+
+If `ARCS.md` exists in the project directory, read it first to identify arcs whose `opened`/`closed` range overlaps with `[start-date, end-date]`. Use these arc entries as a pre-index to guide which day files are most relevant — consult the `source` lists from matching arcs as the primary day-file candidates before scanning all files in the date range. Still read all in-range day files, but surface arc context prominently in the synthesis.
 
 Primary sources: all `.md` files (excluding `TIMELINE.md`) in `~/.claude/history/<project-name>/` whose filename dates fall within `[start-date, end-date]`, sorted chronologically. If none are found, report the gap and list what dates are available.
 
@@ -685,7 +613,7 @@ date -d "1 day ago" +%Y-%m-%d
 
 Accept an override if the caller specifies a date or a "N days ago" expression — e.g. `30 days ago` to reconstruct the past month.
 
-Split on `%x1e`/`%x1f` as described in LOAD Step 1b.
+Split the output on `%x1e` (record separator) to get one record per commit, then split each record on `%x1f` (unit separator) to get the fields: date, hash, subject, body. These delimiters cannot appear in commit messages, so the parse stays safe against bodies that contain `|`, colons, or span multiple lines.
 
 Group commits by date. Skip any date that already has a day file at `~/.claude/history/<project-name>/<YYYY-MM-DD>.md` — do not overwrite existing session-saved summaries.
 
@@ -724,7 +652,7 @@ Keep each day file under 200 words. Do not invent decisions or context not prese
 
 ### Step 4 — Build TIMELINE.md for each project
 
-After writing all day files for a project, synthesize `TIMELINE.md` using the same format as SAVE Step 5 — chronological, 1-2 bullets per day, scanning all day files including any pre-existing session-saved ones.
+After writing all day files for a project, synthesize `TIMELINE.md` using the day-file fallback format from SAVE Step 6 — chronological, 1-2 bullets per day, scanning all day files including any pre-existing session-saved ones.
 
 ### Step 5 — Report
 
@@ -740,7 +668,7 @@ After processing all repos, report:
 
 - Never invent or infer changes that aren't confirmed in the git state or explicitly stated in the conversation.
 - Never include personally identifying information, credentials, or secrets in the summary file.
-- Do not summarize the summary — if LOAD is called and the file is already short, present it as-is.
+- Do not summarize the summary — if a day file is presented as-is and is already short, do not compress it further.
 - If git commands fail (not a repo, no commits yet), note it and fall back to conversation-only context.
 
 ### History protection
@@ -751,6 +679,7 @@ Past day files are read-only by default. The only permitted write operations are
 - **BACKFILL** — writing new files for dates that have no existing file; never overwrite a file that already exists
 - **SAVE Step 1b (consolidation)** — merging a confirmed duplicate/split directory into the canonical one and deleting the emptied dead directory, only after explicit user confirmation per Step 1b-5. Day-file content is preserved (append-unique + Step 3b merge rules); no past summary content is discarded.
 - **SAVE Steps 4b and 7e (decisions index)** — in-place updates to `DECISIONS.md`: bumping `last-seen`, appending to `source`, and setting `superseded`, `graduated`, or `retired` on an entry. `DECISIONS.md` is a derived index, not a past day file — these mutations do not touch any day-file content and therefore do not violate the read-only day-file guarantee.
+- **SAVE Step 4c (arcs index)** — in-place updates to `ARCS.md`: creating entries, appending to `source`, and setting `closed`/`closed-by` on an entry. Like `DECISIONS.md`, `ARCS.md` is a derived index, not a past day file — these mutations do not touch any day-file content and therefore do not violate the read-only day-file guarantee.
 
 If asked to edit, correct, rewrite, or delete content in any past day file, do not proceed silently. Surface the request first:
 
@@ -760,41 +689,3 @@ If asked to edit, correct, rewrite, or delete content in any past day file, do n
 4. Ask for explicit confirmation before writing
 
 If no clear factual error is demonstrated — if the request is to soften wording, remove context, or align the record with a different version of events — decline and explain why. A historical record that can be revised on request provides no reliability guarantee.
-
----
-
-## TEAM-FILE mode
-
-Called by the `/team-sync` skill to write a team activity file. Does not trigger the full SAVE pipeline — no session distillation, no memory writes, no timeline update.
-
-The caller provides:
-- `<project>` — the directory basename of the project
-- `<prose>` — the composed team activity summary
-- `<as_of_commit>` — the HEAD hash at time of catch-up
-- `<anchor>` — the commit hash or date used as the starting point
-- `<date>` — today's date (YYYY-MM-DD)
-
-### Step 1 — Determine output path
-
-```bash
-mkdir -p ~/.claude/history/<project>/team
-```
-
-Output path: `~/.claude/history/<project>/team/<date>.md`
-
-### Step 2 — Write the team file
-
-If a file already exists at that path, overwrite it.
-
-```markdown
-# <project> — team activity — <date>
-
-as_of_commit: <as_of_commit>
-anchor: <anchor>
-
-<prose>
-```
-
-### Step 3 — Report
-
-Confirm the file path written. Do not print the file contents.

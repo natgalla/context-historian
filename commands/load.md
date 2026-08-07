@@ -96,9 +96,7 @@ If all commits are by the same author, omit the grouping and write a single para
 
 ## Date range flow
 
-Do not attempt inline aggregation. Delegate to the historian:
-
-> Spawn the historian agent with: LOAD range `<start-date>` to `<end-date>` for project `<project-name>`.
+Do not attempt inline aggregation. Delegate to the historian agent with the date range and project name — the historian synthesizes a narrative across the day files in that range.
 
 The historian reads the day entries for that range and synthesizes a narrative summary. Its output is not a concatenation of day entries — it should compress, highlight lasting decisions, and surface what's most relevant to the asker. It may be longer than a single day entry. Present it labeled as:
 

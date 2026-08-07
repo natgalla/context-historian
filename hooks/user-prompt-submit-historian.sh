@@ -27,22 +27,14 @@ fi
 HISTORY_FILE=$(ls "$HISTORY_DIR"/*.md 2>/dev/null | grep -v TIMELINE | sort | tail -1)
 [ -f "$HISTORY_FILE" ] || exit 0
 
-# Size guard: if file exceeds 3000 characters, inject only STATE and OPEN sections
-# to avoid bloating the context window with a large history file.
-FILE_SIZE=$(wc -c < "$HISTORY_FILE" 2>/dev/null || echo 0)
-if [ "$FILE_SIZE" -gt 3000 ]; then
-  # Extract STATE section (lines from **STATE** up to the next **SECTION** heading or EOF)
-  STATE_SECTION=$(awk '/^\*\*STATE\*\*/{found=1} found && /^\*\*[A-Z]/ && !/^\*\*STATE\*\*/{exit} found{print}' "$HISTORY_FILE")
-  # Extract OPEN section (lines from **OPEN** up to the next **SECTION** heading or EOF)
-  OPEN_SECTION=$(awk '/^\*\*OPEN\*\*/{found=1} found && /^\*\*[A-Z]/ && !/^\*\*OPEN\*\*/{exit} found{print}' "$HISTORY_FILE")
-  HISTORY_CONTENT="${STATE_SECTION}
+# Always inject only STATE and OPEN — full history is available via /load or by reading the file directly.
+STATE_SECTION=$(awk '/^\*\*STATE\*\*/{found=1} found && /^\*\*[A-Z]/ && !/^\*\*STATE\*\*/{exit} found{print}' "$HISTORY_FILE")
+OPEN_SECTION=$(awk '/^\*\*OPEN\*\*/{found=1} found && /^\*\*[A-Z]/ && !/^\*\*OPEN\*\*/{exit} found{print}' "$HISTORY_FILE")
+HISTORY_CONTENT="${STATE_SECTION}
 
 ${OPEN_SECTION}
 
-Full session history available — run /load for complete context."
-else
-  HISTORY_CONTENT=$(cat "$HISTORY_FILE")
-fi
+Full session history: ${HISTORY_FILE} — run /load for complete context."
 
 jq -n --arg ctx "$HISTORY_CONTENT" '{
   hookSpecificOutput: {
