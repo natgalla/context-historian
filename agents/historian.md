@@ -298,15 +298,23 @@ mkdir -p "$memory_dir"
 
 Normalization rule: any historian write to a memory file — create (5b), reversal-update (5a) — always writes `date: <today>` to the frontmatter, adding the field if the file lacked it. This self-migrates auto-memory files that predate the `date` field over time; no separate migration pass is needed. When updating an auto-memory file, preserve existing `node_type` and `originSessionId` keys — only add or refresh `date`.
 
-#### 5a — Retire stale memories
+#### 5a — Retire stale memories (single read pass)
 
-Read all existing memory files in `$memory_dir`. For each one, cross-reference its content against the current session's DECISIONS and DONE sections:
+This is the only pass that reads the memory files. Read each one once here and carry the loaded set (plus the graduation classification below) forward — Step 7a reuses it and does not re-read.
+
+**DONE short-circuit:** before reading any memory files, check whether the finalized DONE section (from Step 3/3b) is empty. If it is, skip the retirement scan entirely — no DONE items means nothing can resolve a memory constraint. This short-circuit applies only to the retirement scan (the "does a DONE item resolve this memory?" check) below; the graduation classification still runs, since graduation is age-based, not DONE-based. Even under the short-circuit, still read the memory files (or read them in Step 7a's terms — a single load either way) so the graduation set is populated, then proceed to Step 5b.
+
+Read all existing memory files in `$memory_dir`. For each one, do two things:
+
+**1. Retirement scan** (skipped when the DONE short-circuit above fires) — cross-reference its content against the current session's DECISIONS and DONE sections:
 
 - If a DONE item **resolves** a constraint recorded in a memory (e.g., memory says "reason column is missing", DONE says "added reason column") → delete the memory file and remove its entry from `MEMORY.md`.
 - If a DECISION **reverses** a prior call recorded in a memory → update the memory file with the new decision, note the reversal briefly, and update the `date` field.
 - If neither applies, leave the memory untouched.
 
 Only act when the contradiction is clear and direct. When in doubt, leave the memory and add a note rather than deleting it.
+
+**2. Graduation classification** — while the file is loaded, determine its graduation eligibility so Step 7a needs no second read. A file is a graduation candidate when `metadata.type` is `project` or `feedback` (exclude `user` and `reference`) AND its age is ≥7 days. Determine age from the `date:` frontmatter field; if absent, use the file's mtime via `stat -f %Sm -t %Y-%m-%d <file>` (macOS). Record, per candidate, whether age came from the `date:` field or from mtime — Step 7c must show this. Carry the classified set (and which files were deleted/updated in the retirement scan) forward to Step 7a.
 
 #### 5b — Write new memories
 
@@ -416,33 +424,24 @@ Additionally, if the DECISIONS section written in Step 3 is non-empty but no CIT
 
 This step applies whenever writing to a subdirectory — both named project directories and `.journal/`.
 
-**1. If `ARCS.md` exists** — read it and generate `TIMELINE.md` with arc sections at the top, followed by a full chronological section. Format:
+Generate `TIMELINE.md` from `ARCS.md` when it exists, rather than reading all day files.
+
+**1. If `ARCS.md` exists** — read it and generate `TIMELINE.md` as an arc-organized view. Format:
 
 ```
 # <project-name> — Timeline
 
 ## <arc-slug> (<opened> → <closed or "open">)
 <summary sentence>
-- <YYYY-MM-DD>: <1-line note from that day's DONE or DECISIONS — derive from the source day files listed for this arc>
-- ...
+- <YYYY-MM-DD>: <1-line note from that day's DONE or DECISIONS>
 
 ## <next arc>
 ...
-
----
-
-## Chronological
-
-### <YYYY-MM-DD>
-- <1-2 bullet points: key decisions or changes from that day>
-
-### <YYYY-MM-DD>
-- ...
 ```
 
-List open arcs first (sorted by `opened` date descending), then closed arcs (sorted by `closed` date descending). For each arc, derive the per-day notes from the day files named in its `source` list.
+List open arcs first (sorted by `opened` date descending), then closed arcs (sorted by `closed` date descending). For each arc, read only the **single most recent** day file from its `source` list and emit **exactly one** bullet — the latest source date and a 1-line note from that day's DONE or DECISIONS. Do not read the arc's other source day files. If an arc has no source day files yet (opened today, no prior sessions), omit the bullet entirely.
 
-After the arc sections, always append a `---` separator and a `## Chronological` section covering **all** day files in date order (oldest first). Format identically to the fallback (### YYYY-MM-DD, 1-2 bullets). The chronological section is always present — it is the complete record regardless of arc coverage.
+After the arc sections, append a day-by-day section for any day files that are not referenced in any arc's `source` list — these are pre-index days or sessions with no slugged OPEN items. Do not discard them. Format identically to the fallback (## YYYY-MM-DD, 1-2 bullets). If all day files are covered by arcs, omit this section.
 
 **2. If `ARCS.md` does not exist** (first sessions before any slugged OPEN items) — fall back to the day-file behavior. Count the `.md` files in the project directory, excluding `TIMELINE.md`. If there are two or more (today's file plus at least one prior day file), read all day files in chronological order (oldest first, by filename date) and synthesize a `TIMELINE.md`:
 
@@ -464,7 +463,7 @@ After writing, report the file path and word count. Do not print the full summar
 
 #### 7a — Identify candidates
 
-Read all memory files in `$memory_dir`. Filter to those where `metadata.type` is `project` or `feedback` (exclude `user` and `reference`). For each candidate, determine its age using the `date` field in frontmatter. If no `date` field is present, use the file's mtime via `stat -f %Sm -t %Y-%m-%d <file>` (macOS). Any candidate whose age is ≥7 days is eligible. For each candidate, record whether age was determined from the `date:` frontmatter field or from mtime — this must be shown in the Step 7c output.
+Use the memory files already read in Step 5a — do not re-read them. Step 5a's graduation classification already applied the filters (`metadata.type` is `project` or `feedback`, age ≥7 days, age source recorded as `date:` field or mtime). The eligible candidates are exactly that classified set, minus any files retired (deleted or updated) in Step 5a's retirement scan.
 
 Skip this step entirely if there are no eligible candidates.
 

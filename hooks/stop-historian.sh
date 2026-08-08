@@ -1,6 +1,6 @@
 #!/bin/bash
 # Runs on session Stop (including /clear and compact).
-# Fires a notification when the transcript exceeds 300KB to prompt a manual /save while context is live.
+# Fires a notification when the transcript exceeds 200KB to prompt a manual /save while context is live.
 
 INPUT=$(cat)
 CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
@@ -24,7 +24,7 @@ PROJECT_KEY=$(echo "$CWD" | tr '/' '-')
 TRANSCRIPT=$(ls -t "$HOME/.claude/projects/$PROJECT_KEY"/*.jsonl 2>/dev/null | head -1)
 if [ -n "$TRANSCRIPT" ]; then
   SIZE=$(wc -c < "$TRANSCRIPT" 2>/dev/null || echo 0)
-  if [ "$SIZE" -gt 300000 ]; then
+  if [ "$SIZE" -gt 200000 ]; then
     osascript -e 'display notification "Context is large — run /save before clearing" with title "Claude Code" sound name "Ping"' 2>/dev/null \
       || notify-send "Claude Code" "Context is large — run /save before clearing" 2>/dev/null \
       || true

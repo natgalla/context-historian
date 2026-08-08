@@ -38,7 +38,7 @@ The system gets more useful the longer you run it.
 
 - **Decisions index** — `DECISIONS.md` grows into a lifecycle-tracked index of the project's architectural decisions, updated at every `/save`. Decisions that are more than 30 days old **and** were restated within the last 14 days are automatically promoted to `docs/adr/` or `STANDING.md`; those unseen for more than 60 days are retired. (A decision that has simply gone quiet without being reversed is retired, not promoted — the 14-day recency condition is what distinguishes the two.)
 
-- **Arcs index** — `ARCS.md` tracks ongoing and completed work arcs. To start tracking an arc, prefix an OPEN item with a kebab-case slug on first appearance: `[auth-refactor] Replace legacy session tokens`. Carry the same slug forward when the item recurs in later sessions. New arcs are opened automatically when a slugged OPEN item first appears; they close when the item moves to DONE. Once any arcs exist, `TIMELINE.md` is generated from `ARCS.md` rather than from day files directly, giving a theme-organized view instead of a date-organized one. Stale arcs (open more than 60 days, quiet more than 30 days) are surfaced at `/save` time for user confirmation — never auto-closed.
+- **Arcs index** — `ARCS.md` tracks ongoing and completed work arcs. To start tracking an arc, prefix an OPEN item with a kebab-case slug on first appearance: `[auth-refactor] Replace legacy session tokens`. Carry the same slug forward when the item recurs in later sessions. New arcs are opened automatically when a slugged OPEN item first appears; they close when the item moves to DONE. Once any arcs exist, `TIMELINE.md` leads with arc-organized sections (one per work arc, open arcs first) followed by a chronological section for any day files not referenced in any arc — both views coexist in one file. Stale arcs (open more than 60 days, quiet more than 30 days) are surfaced at `/save` time for user confirmation — never auto-closed.
 
 - **Stale memory detection** — the historian checks project memories at each `/save` and retires or updates entries that no longer match reality, so they don't silently mislead future sessions.
 
@@ -74,7 +74,7 @@ History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. For sess
 <!-- HEAD: a3f9c21 -->
 ```
 
-When you have multiple day files, the agent maintains a `TIMELINE.md`. When an `ARCS.md` exists, the timeline is arc-organized — one section per work arc with per-day notes pulled from the source day files, open arcs listed first. Before any arcs have been tracked, it falls back to a chronological day-by-day format (1-2 bullets per day). Either way it is regenerated from scratch on every `/save`.
+When you have multiple day files, the agent maintains a `TIMELINE.md`. When an `ARCS.md` exists, the timeline leads with arc-organized sections — one section per work arc with per-day notes, open arcs listed first — followed by a chronological section for any day files not referenced in any arc. Both views coexist in one file. Before any arcs have been tracked, the timeline is a chronological day-by-day format only (1-2 bullets per day). Either way it is regenerated from scratch on every `/save`.
 
 The agent also maintains a `DECISIONS.md` — a lifecycle-tracked index of the project's architectural decisions, recording when each first appeared, when it was last restated, and whether it was superseded, graduated to a standing doc, or retired. It is updated automatically at `/save` time.
 
@@ -86,9 +86,7 @@ If you run `/save` more than once on the same day, the historian merges rather t
 
 ## How sessions connect
 
-When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project and injects it as context — silently, automatically. By the time Claude responds to your first message, it already knows where the project stands.
-
-If the history file exceeds 3000 bytes, the hook injects only the STATE and OPEN sections rather than the full file, to avoid bloating the context window. A note is appended pointing to `/load` for the complete entry.
+When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project, injects only the STATE and OPEN sections as context — silently, automatically — and appends a note pointing to `/load` for the full entry. By the time Claude responds to your first message, it already knows where the project stands.
 
 `/load` is for surfacing context from a past session, not the current one. Run it with a date — `2026-07-28`, `yesterday`, `last week`, `3 days ago` — and it finds that day's history file. If a `TIMELINE.md` exists for the project, it's presented first as a project arc overview; then the day file is shown, labeled as historical context; then a divergence check shows what changed between that snapshot and today. If no file exists for the requested date, it lists what's available instead of silently falling back. If invoked with no date, `/load` explains that the hook already injected current session context and prompts you to specify a date or date range.
 
@@ -249,7 +247,7 @@ BACKFILL writes day files and `TIMELINE.md` only — it does not populate `DECIS
 
 ## Platform notes
 
-- **Notifications** — the stop hook fires a notification when the session transcript exceeds 300KB. On macOS this uses `osascript`; on Linux desktop it falls back to `notify-send` (`apt install libnotify-bin` / `dnf install libnotify`). Windows and headless environments get no notification — the hook silently skips.
+- **Notifications** — the stop hook fires a notification when the session transcript exceeds 200KB. On macOS this uses `osascript`; on Linux desktop it falls back to `notify-send` (`apt install libnotify-bin` / `dnf install libnotify`). Windows and headless environments get no notification — the hook silently skips.
 - **Date compatibility** — BACKFILL defaults to commits from the past day (yesterday onward). When passing a date range override, both BSD (`date -v-Nd`) and GNU (`date -d "N days ago"`) syntax are accepted; the agent picks whichever works on the current platform.
 - **Dependencies** — `bash`, `git`, `jq`. `bash` and `git` are standard everywhere; `jq` must be installed separately on most Linux distros (`apt install jq` or `brew install jq` on macOS if not present).
 - **bash version** — `install.sh` uses `[[ ]]` conditionals that require bash 4+. macOS ships bash 3.2 by default, which will cause the installer to fail — install a current bash via Homebrew (`brew install bash`) before running anything on macOS.
