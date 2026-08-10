@@ -3,8 +3,6 @@
 ## Saving session history
 For `SAVE` (end of session, "wrap up", "I'm done for the day"), invoke the `/save` skill — it delegates to the historian agent. The historian decides what's worth saving. Do not summarize sessions inline.
 
-When the historian's SAVE output includes memory graduation candidates (memories eligible for promotion to `~/.claude/CLAUDE.md`), present them to the user, wait for their response, and apply the approved content blocks to `~/.claude/CLAUDE.md`. The historian outputs exactly what to write and where — relay it verbatim and apply after confirmation.
-
 Delegate to the **historian** agent directly for `BACKFILL` (reconstruct history from git).
 
 ## Loading session history
@@ -38,7 +36,7 @@ DECISION-SOURCE: slug=<slug>
 Use the same slug from the `CITE:` tag. Emit at the moment of the decision, not later. The historian collects both tags at `/save` time to populate `BIBLIOGRAPHY.md` — `CITE:` builds the paper trail, `DECISION-SOURCE:` marks what was load-bearing.
 
 ## Decisions and arcs indexes
-Alongside `TIMELINE.md` and `BIBLIOGRAPHY.md`, the historian maintains two per-project indexes automatically at `/save` time — do not edit any of these files manually. (`TIMELINE.md` is regenerated from scratch on every `/save`; the others are append/upsert updated.)
+Alongside `TIMELINE.md` and `BIBLIOGRAPHY.md`, the historian maintains two per-project indexes automatically at `/save` time — do not edit any of these files manually. (`TIMELINE.md` is regenerated from scratch on each `/save` where a new day file was written or arc data changed; otherwise it is left untouched. The others are append/upsert updated.)
 
 `DECISIONS.md` — a lifecycle-tracked index of architectural decisions (when each first appeared, was last restated, and whether it was superseded, graduated to a standing doc, or retired).
 
@@ -52,7 +50,7 @@ Day files reconstructed by BACKFILL are marked with `(backfilled)` in their head
 When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.
 
 ## History is read-only
-`~/.claude/history/` is never edited directly, under any circumstances. If the user asks to amend or correct a day file, decline and explain: all history writes go through the historian agent, which enforces its own integrity rules. There are no exceptions — not for typos, not for "quick fixes", not for user insistence.
+This agent never edits `~/.claude/history/` directly. If the user asks to amend or correct a day file, decline and redirect: all agent-mediated writes go through the historian agent, which has its own protection protocol — it will surface the contested text, require explicit justification, and decline requests to soften wording or revise narrative without a demonstrable factual error. If the historian also declines, the user can always edit the files directly in their own terminal — the protection applies to agent-mediated changes, not to direct filesystem edits.
 
 ## Project state is not memory
 Do not write project status, blockers, or branch state to the auto-memory files (`~/.claude/projects/.../memory/`). Those entries go stale immediately and create a secondary source that contradicts the historian. State lives in the historian day file + current session context. If an auto-memory entry contains project state, delete it.

@@ -25,7 +25,7 @@ Accept one or two dates. Resolve each to `YYYY-MM-DD`:
 
 ## Step 2 — Identify the project
 
-Derive the project name using this routing rule:
+Derive the project name using this routing rule (same logic as historian Step 1 — duplicated here because /load runs inline, not via subagent):
 
 ```bash
 PROJECT_NAME=$(git remote get-url origin 2>/dev/null | xargs basename -s .git 2>/dev/null)
@@ -36,11 +36,11 @@ fi
 
 - **Git repo with a remote:** use the remote basename (`.git` stripped).
 - **Git repo without a remote:** fall back to the git root basename.
-- **No git repo:** `PROJECT_NAME` is empty — look in the `.journal/` fallback directory (`~/.claude/history/.journal/`) rather than a named subdirectory.
+- **No git repo:** `PROJECT_NAME` is empty — look in the `.journal/` fallback directory (`$HISTORY_ROOT/.journal/`) rather than a named subdirectory.
 
 ## Step 3 — Locate the file
 
-Look for `~/.claude/history/<project-name>/<target-date>.md`. For a journal session (no git repo), look in `~/.claude/history/.journal/<target-date>.md` instead. If a date is explicitly requested and no file is found there, a legacy flat file may still exist at `~/.claude/history/<target-date>.md`.
+Look for `$HISTORY_ROOT/<project-name>/<target-date>.md`. For a journal session (no git repo), look in `$HISTORY_ROOT/.journal/<target-date>.md` instead. If a date is explicitly requested and no file is found there, a legacy flat file may still exist at `$HISTORY_ROOT/<target-date>.md`.
 
 **If the file does not exist** — do not fall back to a different date silently. Tell the user:
 

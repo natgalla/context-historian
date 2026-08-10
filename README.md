@@ -40,11 +40,7 @@ The system gets more useful the longer you run it.
 
 - **Arcs index** — `ARCS.md` tracks ongoing and completed work arcs. To start tracking an arc, prefix an OPEN item with a kebab-case slug on first appearance: `[auth-refactor] Replace legacy session tokens`. Carry the same slug forward when the item recurs in later sessions. New arcs are opened automatically when a slugged OPEN item first appears; they close when the item moves to DONE. Once any arcs exist, `TIMELINE.md` leads with arc-organized sections (one per work arc, open arcs first) followed by a chronological section for any day files not referenced in any arc — both views coexist in one file. Stale arcs (open more than 60 days, quiet more than 30 days) are surfaced at `/save` time for user confirmation — never auto-closed.
 
-- **Stale memory detection** — the historian checks project memories at each `/save` and retires or updates entries that no longer match reality, so they don't silently mislead future sessions.
-
 - **Split-history consolidation** — if the same project accumulated history under two different directory names (a rename, dots-vs-hyphens drift, or a session that ran before a remote was set), the historian detects this during `/save` and prompts you to consolidate. It shows both ranges, explains which signals aligned, and proposes a canonical directory. You choose to consolidate, keep them separate, or cancel — nothing merges without confirmation.
-
-- **Project-specific memory curation** — memories are scoped per project and curated separately from Claude Code's global user memory. During `/save`, the historian surfaces memories that may be worth promoting to `CLAUDE.md` — you review and apply them.
 
 - **Backfillable** — already have a project with months of git history but no historian files? BACKFILL reconstructs day files from `git log` so you're not starting from zero. Existing session-saved files are never overwritten. Backfilled files are marked `(backfilled)` in their header — `# my-app — 2025-11-14 (backfilled)` — so they're visually distinguishable from session-saved summaries and treated as lower-confidence reconstructions.
 
@@ -74,7 +70,7 @@ History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. For sess
 <!-- HEAD: a3f9c21 -->
 ```
 
-When you have multiple day files, the agent maintains a `TIMELINE.md`. When an `ARCS.md` exists, the timeline leads with arc-organized sections — one section per work arc with per-day notes, open arcs listed first — followed by a chronological section for any day files not referenced in any arc. Both views coexist in one file. Before any arcs have been tracked, the timeline is a chronological day-by-day format only (1-2 bullets per day). Either way it is regenerated from scratch on every `/save`.
+When you have multiple day files, the agent maintains a `TIMELINE.md`. When an `ARCS.md` exists, the timeline leads with arc-organized sections — one section per work arc with per-day notes, open arcs listed first — followed by a chronological section for any day files not referenced in any arc. Both views coexist in one file. Before any arcs have been tracked, the timeline is a chronological day-by-day format only (1-2 bullets per day). Either way it is regenerated from scratch on each `/save` where a new day file was written or arc data changed; otherwise it is left untouched.
 
 The agent also maintains a `DECISIONS.md` — a lifecycle-tracked index of the project's architectural decisions, recording when each first appeared, when it was last restated, and whether it was superseded, graduated to a standing doc, or retired. It is updated automatically at `/save` time.
 
@@ -106,9 +102,9 @@ When responding to session-opening questions ("what's next?", "where did we leav
 
 **What's free:** context injection at session start is a local file read — no LLM call, no tokens. The stop hook notification is a bash script. Neither costs anything.
 
-**What costs tokens:** `/save` runs a pre-check first — if no commits, tool calls, or file changes occurred this session, it reports "Nothing to save" and stops without invoking the historian. When there is something to save, it makes one LLM call — the historian agent reads the conversation and distills a structured summary. In practice this is a small, focused call, and it pays back quickly: a single `/save` typically costs less than the tokens you'd spend re-establishing context at the start of the next session.
+**What costs tokens:** `/save` synthesizes a briefing first, then runs a pre-check. If no tool calls or file changes occurred, it stops without invoking the historian. If DECISIONS and OPEN are both empty after synthesis, it surfaces a choice: full save (synthesized briefing + full index maintenance) or BACKFILL (git-only reconstruction, no synthesis, no index updates). BACKFILL is cheaper and sufficient when there are no decisions or open items to capture — the agent waits for an explicit selection rather than deciding automatically.
 
-**`/save` is optional.** For short sessions with no lasting decisions, skip it — running BACKFILL at the start of the next session gives you a git log scaffold that is usually enough to re-orient. Run `/save` when decisions were made, when something was learned that git can't capture, or when the session was long enough that re-establishing context manually would be painful.
+**`/save` is optional.** Run it when decisions were made, when something was learned that git can't capture, or when the session was long enough that re-establishing context manually would be painful. For pure implementation sessions where everything is in the commits, BACKFILL at the next session start is usually sufficient.
 
 **What git log can't do.** Git log reconstruction gives you orientation — branch, recent commits, what changed. It cannot give you context: why a decision was made, what was tried and abandoned, what's still open. Those only exist in the conversation. If your commit messages captured all of that, your git history would be bloated and unusual. `/save` is the right place for it.
 
