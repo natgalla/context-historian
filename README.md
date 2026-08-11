@@ -4,15 +4,11 @@ Open Claude Code in a project. Type your first message. Claude already knows wha
 
 That's what context-historian does. It captures session context as you work and injects it automatically at the start of every new session, keyed to the project you're in. Switch projects, get that project's context. No configuration, no "here's where we left off" preamble. When you're ready to close, `/save` distills the session — the historian decides what context carries forward, capturing decisions and open threads without you having to curate it manually. The next session picks up from there.
 
-Under the hood it uses three hooks and two agents:
-
-- A **session-start hook** leaves a sentinel so the system knows it's a fresh session
-- A **prompt-submit hook** intercepts your first message, reads the most recent summary for the current project, and injects it as context — automatically, before Claude sees your prompt
-- A **stop hook** fires a notification when your session transcript gets large, nudging you to run `/save` while context is still live
-- The **historian agent** does the real work: distilling sessions into structured summaries, synthesizing narratives across date ranges, and reconstructing history from git log on explicit request (BACKFILL). Single-date `/load` calls are handled directly by the `/load` command (no historian involved), and `/team-sync` writes its own team files directly — the historian only comes in for SAVE, date-range synthesis, and BACKFILL. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
-- The **researcher agent** finds answers in docs and the web rather than memory, and emits `CITE:` tags that feed the bibliography pipeline
+Under the hood it has two layers. The **skills layer** (`skills/`) carries the historian and researcher procedures — harness-agnostic, with no tool-name assumptions or harness-specific paths. The **Claude Code adapter** (`adapters/claude-code/`) wires those skills into Claude Code via three hooks, two agents, and three slash commands.
 
 ## How this fits with Claude Code
+
+The following applies to the Claude Code adapter — the reference implementation. For other harnesses, see [Building an adapter](#building-an-adapter).
 
 Claude Code already has two persistence mechanisms — they do different things and context-historian doesn't replace either of them.
 
@@ -27,6 +23,12 @@ Claude Code already has two persistence mechanisms — they do different things 
 context-historian keys history to the git root of whatever directory you open Claude Code in. Switch from `api` to `frontend` to `infra` — each project gets its own history injected automatically, with no configuration and no "which project am I in" overhead. The right context shows up because the hook reads your working directory.
 
 The short version: built-in memory knows about you, `CLAUDE.md` knows about the project's rules, context-historian knows what happened yesterday.
+
+## Building an adapter
+
+An adapter is a thin connector between `skills/` and a specific agent harness. It doesn't implement historian or researcher logic — those live in the skills layer. What it implements is injection (delivering context at the right moment), command registration (exposing `/save`, `/load`, and `/team-sync` to the user), and routing rules (telling the harness when to delegate to which agent).
+
+To build one, start with `adapters/README.md`, which specifies the adapter contract. Then use `adapters/claude-code/` as the reference — it covers the full surface area. As a rough sizing guide, a pi adapter is approximately 200 lines of TypeScript plus a routing-rules file, most of which is harness plumbing rather than historian logic.
 
 ## What builds up over time
 
@@ -70,7 +72,7 @@ History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. For sess
 <!-- HEAD: a3f9c21 -->
 ```
 
-When you have multiple day files, the agent maintains a `TIMELINE.md`. When an `ARCS.md` exists, the timeline leads with arc-organized sections — one section per work arc with per-day notes, open arcs listed first — followed by a chronological section for any day files not referenced in any arc. Both views coexist in one file. Before any arcs have been tracked, the timeline is a chronological day-by-day format only (1-2 bullets per day). Either way it is regenerated from scratch on each `/save` where a new day file was written or arc data changed; otherwise it is left untouched.
+When you have multiple day files, the agent maintains a `TIMELINE.md`. When an `ARCS.md` exists, the timeline leads with arc-organized sections — one section per work arc with a single dated note from the most recent session, open arcs listed first — followed by a chronological section for any day files not referenced in any arc. Both views coexist in one file. Before any arcs have been tracked, the timeline is a chronological day-by-day format only (1-2 bullets per day). Either way it is regenerated from scratch on each `/save` where a new day file was written or arc data changed; otherwise it is left untouched.
 
 The agent also maintains a `DECISIONS.md` — a lifecycle-tracked index of the project's architectural decisions, recording when each first appeared, when it was last restated, and whether it was superseded, graduated to a standing doc, or retired. It is updated automatically at `/save` time.
 
@@ -147,6 +149,29 @@ This step is **graceful** — if no tags are found in a session, the historian r
 
 > **Note:** The installer appends `CLAUDE.md` routing rules (historian, researcher, and bibliography conventions) to your `~/.claude/CLAUDE.md` automatically. For manual installs, see the manual install block below.
 
+## Repository structure
+
+```
+context-historian/
+├── skills/               ← agent-neutral skill definitions (the brain)
+│   ├── historian/        ← SAVE, LOAD RANGE, BACKFILL procedures
+│   └── researcher/       ← documentation lookup procedures
+├── scripts/              ← shared shell helpers
+│   ├── resolve-project.sh
+│   └── latest-day-file.sh
+├── adapters/             ← per-harness connectors (the nervous system)
+│   ├── claude-code/      ← reference implementation
+│   │   ├── agents/       ← Claude Code agent definitions with frontmatter
+│   │   ├── commands/     ← /load, /save, /team-sync slash commands
+│   │   └── hooks/        ← SessionStart, UserPromptSubmit, Stop hooks
+│   └── README.md         ← adapter contract for building new adapters
+└── CLAUDE.md             ← Claude Code routing rules (appended to ~/.claude/CLAUDE.md)
+```
+
+**Existing Claude Code users see no change** — `install.sh` installs the same files to the same paths in `~/.claude/`. The `skills/` and `adapters/` layout is an internal restructure that separates the brain (harness-agnostic procedures) from the nervous system (Claude Code wiring); the install target is unchanged.
+
+To build an adapter for a different harness, start with `adapters/README.md`.
+
 ## Installation
 
 > **Canonical source:** `historian.md` and the related skill and hook files originate in a private upstream repo and are propagated here. Direct edits to these files in context-historian may be overwritten — this repo is the authoritative community release.
@@ -189,13 +214,13 @@ Then restart Claude Code.
 ```bash
 mkdir -p ~/.claude/agents ~/.claude/commands ~/.claude/hooks
 
-cp agents/historian.md    ~/.claude/agents/
-cp agents/researcher.md   ~/.claude/agents/
-cp commands/load.md       ~/.claude/commands/
-cp commands/save.md       ~/.claude/commands/
-cp commands/team-sync.md  ~/.claude/commands/
-cp hooks/*.sh             ~/.claude/hooks/
-chmod +x                  ~/.claude/hooks/*.sh
+cp adapters/claude-code/agents/historian.md    ~/.claude/agents/
+cp adapters/claude-code/agents/researcher.md   ~/.claude/agents/
+cp adapters/claude-code/commands/load.md       ~/.claude/commands/
+cp adapters/claude-code/commands/save.md       ~/.claude/commands/
+cp adapters/claude-code/commands/team-sync.md  ~/.claude/commands/
+cp adapters/claude-code/hooks/*.sh             ~/.claude/hooks/
+chmod +x                                       ~/.claude/hooks/*.sh
 
 # Append this repo's routing rules to your global ~/.claude/CLAUDE.md (or copy if you don't have one).
 # The rules tell Claude to delegate /save and /load to the historian agent,
