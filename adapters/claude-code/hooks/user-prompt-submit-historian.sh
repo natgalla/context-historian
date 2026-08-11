@@ -13,7 +13,7 @@ rm -f "$SENTINEL"
 
 HISTORY_ROOT="$HOME/.claude/history"
 
-PROJECT_NAME=$(bash "$(dirname "$0")/../../../scripts/resolve-project.sh")
+PROJECT_NAME=$(bash "$(dirname "$0")/../scripts/resolve-project.sh")
 
 # Use project subdirectory when in a git repo; .journal fallback for non-git sessions
 if [ -n "$PROJECT_NAME" ]; then
@@ -22,7 +22,7 @@ else
   HISTORY_DIR="$HISTORY_ROOT/.journal"
 fi
 
-HISTORY_FILE=$(bash "$(dirname "$0")/../../../scripts/latest-day-file.sh" "$HISTORY_ROOT" "${PROJECT_NAME:-.journal}")
+HISTORY_FILE=$(bash "$(dirname "$0")/../scripts/latest-day-file.sh" "$HISTORY_ROOT" "${PROJECT_NAME:-.journal}")
 [ -f "$HISTORY_FILE" ] || exit 0
 
 # Always inject only STATE and OPEN — full history is available via /load or by reading the file directly.

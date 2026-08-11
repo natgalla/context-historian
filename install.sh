@@ -59,6 +59,12 @@ cp "$SCRIPT_DIR/adapters/claude-code/commands/save.md"       "$DEST/commands/sav
 cp "$SCRIPT_DIR/adapters/claude-code/commands/team-sync.md"  "$DEST/commands/team-sync.md"
 echo "Installed historian and researcher agents and /load, /save, /team-sync commands"
 
+# Install shared helper scripts
+mkdir -p "$DEST/scripts"
+cp "$SCRIPT_DIR/scripts/"*.sh "$DEST/scripts/"
+chmod +x "$DEST/scripts/"*.sh
+echo "Installed shared scripts to $DEST/scripts/"
+
 # Install hooks (from claude-code adapter)
 mkdir -p "$DEST/hooks"
 cp "$SCRIPT_DIR/adapters/claude-code/hooks/"*.sh "$DEST/hooks/"
