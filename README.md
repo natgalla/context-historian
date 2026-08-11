@@ -4,35 +4,35 @@ Open Claude Code in a project. Type your first message. Claude already knows wha
 
 That's what context-historian does. It captures session context as you work and injects it automatically at the start of every new session, keyed to the project you're in. Switch projects, get that project's context. No configuration, no "here's where we left off" preamble. When you're ready to close, `/save` distills the session — the historian decides what context carries forward, capturing decisions and open threads without you having to curate it manually. The next session picks up from there.
 
-Under the hood it uses three hooks and two agents:
+Under the hood it has two layers. The **skills layer** (`skills/`) carries the historian and researcher procedures — harness-agnostic, with no tool-name assumptions or harness-specific paths. The **Claude Code adapter** (`adapters/claude-code/`) wires those skills into Claude Code via three hooks, two agents, and three slash commands. The automatic injection requires your harness to support session-start and prompt-submit events — without those hooks (or equivalent middleware), context injection falls back to a manual `/load` workflow.
 
-- A **session-start hook** leaves a sentinel so the system knows it's a fresh session
-- A **prompt-submit hook** intercepts your first message, reads the most recent summary for the current project, and injects it as context — automatically, before Claude sees your prompt
-- A **stop hook** fires a notification when your session transcript gets large, nudging you to run `/save` while context is still live
-- The **historian agent** does the real work: distilling sessions into structured summaries, synthesizing narratives across date ranges, and reconstructing history from git log on explicit request (BACKFILL). Single-date `/load` calls are handled directly by the `/load` command (no historian involved), and `/team-sync` writes its own team files directly — the historian only comes in for SAVE, date-range synthesis, and BACKFILL. The historian is deliberately stateless — it derives everything it needs from the git environment and the content passed to it. When asked to extend or modify the system's architecture, it prefers solutions that keep routing information in the content rather than in external config or injected state, so the system stays portable across environments and setups
-- The **researcher agent** finds answers in docs and the web rather than memory, and emits `CITE:` tags that feed the bibliography pipeline
+## The Claude Code adapter
 
-## How this fits with Claude Code
+Most agent harnesses already have persistence mechanisms — they do different things and context-historian doesn't replace either of them.
 
-Claude Code already has two persistence mechanisms — they do different things and context-historian doesn't replace either of them.
+**Claude Code's built-in memory** tracks who you are: your preferences, role, recurring feedback, things to avoid. It's user-scoped and follows you across every project. context-historian doesn't touch it — and the historian doesn't write project state back into it. Branch state, blockers, and in-flight work belong in the historian day file, not in auto-memory, because that kind of state goes stale immediately and creates a secondary source that contradicts the historian.
 
-**Built-in memory** tracks who you are: your preferences, role, recurring feedback, things to avoid. It's user-scoped and follows you across every project. context-historian doesn't touch it — and the historian doesn't write project state back into it. Branch state, blockers, and in-flight work belong in the historian day file, not in auto-memory, because that kind of state goes stale immediately and creates a secondary source that contradicts the historian.
+**Recommended (Claude Code-specific):** disable Claude Code's auto-memory engine. Claude Code reads from `~/.claude/projects/*/memory/` and injects `MEMORY.md` into every turn automatically — which conflicts with the historian's model of reading memory on demand rather than injecting it wholesale. Adding `"autoMemoryEnabled": false` to `~/.claude/settings.json` turns the engine off entirely, leaving your historian memory files untouched and loaded only when relevant.
 
-**Recommended:** disable Claude Code's auto-memory engine. Claude Code reads from `~/.claude/projects/*/memory/` and injects `MEMORY.md` into every turn automatically — which conflicts with the historian's model of reading memory on demand rather than injecting it wholesale. Adding `"autoMemoryEnabled": false` to `~/.claude/settings.json` turns the engine off entirely, leaving your historian memory files untouched and loaded only when relevant.
-
-**`CLAUDE.md`** holds static project instructions you write and maintain manually — conventions, constraints, architecture notes that don't change session to session. context-historian doesn't replace it either; the two complement each other.
+**Your harness's project instructions file** (Claude Code uses `CLAUDE.md`; others use `AGENTS.md` or equivalent) holds static project instructions you write and maintain manually — conventions, constraints, architecture notes that don't change session to session. context-historian doesn't replace it either; the two complement each other.
 
 **context-historian** tracks where each project stands right now: current branch, decisions made this session, what's open, what's still in flight. It's project-scoped, session-dynamic, and updates automatically as you work.
 
-context-historian keys history to the git root of whatever directory you open Claude Code in. Switch from `api` to `frontend` to `infra` — each project gets its own history injected automatically, with no configuration and no "which project am I in" overhead. The right context shows up because the hook reads your working directory.
+context-historian keys history to the git root of whatever directory you open your agent in. Switch from `api` to `frontend` to `infra` — each project gets its own history injected automatically, with no configuration and no "which project am I in" overhead. The right context shows up because the hook reads your working directory.
 
-The short version: built-in memory knows about you, `CLAUDE.md` knows about the project's rules, context-historian knows what happened yesterday.
+The short version: built-in memory knows about you, your project instructions file knows about the project's rules, context-historian knows what happened yesterday.
+
+## Building an adapter
+
+An adapter is a thin connector between `skills/` and a specific agent harness. It doesn't implement historian or researcher logic — those live in the skills layer. What it implements is injection (delivering context at the right moment), command registration (exposing `/save`, `/load`, and `/team-sync` to the user), and routing rules (telling the harness when to delegate to which agent).
+
+To build one, start with `adapters/README.md`, which specifies the adapter contract. Then use `adapters/claude-code/` as the reference — it covers the full surface area. As a rough sizing guide, a minimal adapter is approximately 200 lines of TypeScript plus a routing-rules file, most of which is harness plumbing rather than historian logic.
 
 ## What builds up over time
 
 The system gets more useful the longer you run it.
 
-- **Long-term memory** — history files accumulate in `~/.claude/history/<project>/` for git-backed projects and in `~/.claude/history/.journal/` for non-git sessions. `TIMELINE.md` grows into a chronological arc of the project — what the branch looked like in November, what changed in January, what's open now. The context injected on day 90 is richer than day 1.
+- **Long-term memory** — history files accumulate in `$HISTORY_ROOT/<project>/` for git-backed projects and in `$HISTORY_ROOT/.journal/` for non-git sessions (the default `$HISTORY_ROOT` for Claude Code is `~/.claude/history`). `TIMELINE.md` grows into a chronological arc of the project — what the branch looked like in November, what changed in January, what's open now. The context injected on day 90 is richer than day 1.
 
 - **Hands-off documentation** — every `/save` is a structured journal entry: what was built, what was decided, what's still open. Over a long engagement this becomes a complete record of the project's evolution without anyone sitting down to write it up.
 
@@ -50,7 +50,7 @@ The system gets more useful the longer you run it.
 
 ## What gets stored
 
-History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. For sessions with no git repo — stand-alone tasks, exploratory sessions, anything outside a project directory — files go to `~/.claude/history/.journal/YYYY-MM-DD.md` and the file header uses `journal` as the project label. Each file is a short structured summary with per-section caps (STATE: 2 sentences, DECISIONS: 10 bullets, DONE: 15 bullets, OPEN: 5 bullets):
+History files live at `$HISTORY_ROOT/<project-name>/YYYY-MM-DD.md` (the default for Claude Code is `~/.claude/history`). For sessions with no git repo — stand-alone tasks, exploratory sessions, anything outside a project directory — files go to `$HISTORY_ROOT/.journal/YYYY-MM-DD.md` and the file header uses `journal` as the project label. Each file is a short structured summary with per-section caps (STATE: 2 sentences, DECISIONS: 10 bullets, DONE: 15 bullets, OPEN: 5 bullets):
 
 ```
 # my-app — 2025-11-14
@@ -70,7 +70,7 @@ History files live at `~/.claude/history/<project-name>/YYYY-MM-DD.md`. For sess
 <!-- HEAD: a3f9c21 -->
 ```
 
-When you have multiple day files, the agent maintains a `TIMELINE.md`. When an `ARCS.md` exists, the timeline leads with arc-organized sections — one section per work arc with per-day notes, open arcs listed first — followed by a chronological section for any day files not referenced in any arc. Both views coexist in one file. Before any arcs have been tracked, the timeline is a chronological day-by-day format only (1-2 bullets per day). Either way it is regenerated from scratch on each `/save` where a new day file was written or arc data changed; otherwise it is left untouched.
+When you have multiple day files, the agent maintains a `TIMELINE.md`. When an `ARCS.md` exists, the timeline leads with arc-organized sections — one section per work arc with a single dated note from the most recent session, open arcs listed first — followed by a chronological section for any day files not referenced in any arc. Both views coexist in one file. Before any arcs have been tracked, the timeline is a chronological day-by-day format only (1-2 bullets per day). Either way it is regenerated from scratch on each `/save` where a new day file was written or arc data changed; otherwise it is left untouched.
 
 The agent also maintains a `DECISIONS.md` — a lifecycle-tracked index of the project's architectural decisions, recording when each first appeared, when it was last restated, and whether it was superseded, graduated to a standing doc, or retired. It is updated automatically at `/save` time.
 
@@ -82,7 +82,7 @@ If you run `/save` more than once on the same day, the historian merges rather t
 
 ## How sessions connect
 
-When you open Claude Code and type your first message, the prompt-submit hook fires before Claude sees it. It reads the most recent history file for the current project, injects only the STATE and OPEN sections as context — silently, automatically — and appends a note pointing to `/load` for the full entry. By the time Claude responds to your first message, it already knows where the project stands.
+When you start a session, the prompt-submit hook fires before your agent sees the message. It reads the most recent history file for the current project, injects only the STATE and OPEN sections as context — silently, automatically — and appends a note pointing to `/load` for the full entry. By the time your agent responds to your first message, it already knows where the project stands.
 
 `/load` is for surfacing context from a past session, not the current one. Run it with a date — `2026-07-28`, `yesterday`, `last week`, `3 days ago` — and it finds that day's history file. If a `TIMELINE.md` exists for the project, it's presented first as a project arc overview; then the day file is shown, labeled as historical context; then a divergence check shows what changed between that snapshot and today. If no file exists for the requested date, it lists what's available instead of silently falling back. If invoked with no date, `/load` explains that the hook already injected current session context and prompts you to specify a date or date range.
 
@@ -90,17 +90,11 @@ Pass two dates to get a narrative across a range — `/load 2026-07-01 2026-07-3
 
 If no history file exists for a project at all, use BACKFILL to reconstruct a scaffold from `git log` — branch state, recent commits, and diff stats. This is a cold-start aid, not a real substitute: it can only surface what's in your commit messages. Decisions, reasoning, and open questions that never made it into a commit are invisible to it. Run `/save` at the end of sessions where those things matter.
 
-**Session-opening questions:** The routing rules installed by `install.sh` (this repo's `CLAUDE.md`, appended to your `~/.claude/CLAUDE.md`) already include a rule telling Claude to answer session-opening questions ("what's next?", "where did we leave off?", "catch me up") directly from the injected context rather than spawning the historian or re-reading history files as a ritual. If you're upgrading from an earlier version or used a partial manual install, verify your `~/.claude/CLAUDE.md` includes a "Session-opening questions" section — if not, add this:
-
-```
-When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.
-```
-
 ---
 
 ## Costs and tradeoffs
 
-**What's free:** context injection at session start is a local file read — no LLM call, no tokens. The stop hook notification is a bash script. Neither costs anything.
+**What's free:** context injection at session start is a local file read — no LLM call, no tokens. The stop hook notification is a shell script. Neither costs anything.
 
 **What costs tokens:** `/save` synthesizes a briefing first, then runs a pre-check. If no tool calls or file changes occurred, it stops without invoking the historian. If DECISIONS and OPEN are both empty after synthesis, it surfaces a choice: full save (synthesized briefing + full index maintenance) or BACKFILL (git-only reconstruction, no synthesis, no index updates). BACKFILL is cheaper and sufficient when there are no decisions or open items to capture — the agent waits for an explicit selection rather than deciding automatically.
 
@@ -116,7 +110,7 @@ Nothing in the core workflow depends on this — skip it if you don't care about
 
 The historian builds a bibliography of external sources consulted during a session. The pipeline has three parts:
 
-1. **Any external read** emits a `CITE:` tag — the researcher agent emits one after every source block, and the main agent emits one whenever it uses WebFetch or WebSearch directly:
+1. **Any external read** emits a `CITE:` tag — the researcher agent emits one after every source block, and the main agent emits one whenever it uses a web fetch or search tool directly:
    ```
    CITE: slug=<kebab-slug> url=<url-or-path> accessed=<YYYY-MM-DD>
    ```
@@ -128,7 +122,7 @@ The historian builds a bibliography of external sources consulted during a sessi
    ```
    The distinction matters: `CITE:` is a paper trail of everything consulted; `DECISION-SOURCE:` marks what actually drove a choice. A session with many `CITE:` tags and few `DECISION-SOURCE:` markers is normal — it means a lot was looked up but only some of it was load-bearing.
 
-3. At `/save` time, the historian scans the session transcript for both tags and upserts entries into `BIBLIOGRAPHY.md` at the repo root. For journal sessions (no git repo), `BIBLIOGRAPHY.md` is written to `~/.claude/history/.journal/BIBLIOGRAPHY.md` instead. `CITE:` tags without a matching `DECISION-SOURCE:` still appear in the bibliography — they contribute to the reconstruction record even if they didn't explicitly drive a decision.
+3. At `/save` time, the historian scans the session transcript for both tags and upserts entries into `BIBLIOGRAPHY.md` at the repo root. For journal sessions (no git repo), `BIBLIOGRAPHY.md` is written to `$HISTORY_ROOT/.journal/BIBLIOGRAPHY.md` instead. `CITE:` tags without a matching `DECISION-SOURCE:` still appear in the bibliography — they contribute to the reconstruction record even if they didn't explicitly drive a decision.
 
 This step is **graceful** — if no tags are found in a session, the historian reports "Bibliography: skipped (no CITE tags this session)" and moves on. Nothing breaks if you don't use it.
 
@@ -145,9 +139,34 @@ This step is **graceful** — if no tags are found in a session, the historian r
 
 ---
 
-> **Note:** The installer appends `CLAUDE.md` routing rules (historian, researcher, and bibliography conventions) to your `~/.claude/CLAUDE.md` automatically. For manual installs, see the manual install block below.
+> **Note:** The installer appends routing rules (historian, researcher, and bibliography conventions) to your harness's project instructions file automatically. For Claude Code this is `~/.claude/CLAUDE.md`. For manual installs, see the manual install block below.
 
-## Installation
+## Repository structure
+
+```
+context-historian/
+├── skills/               ← agent-neutral skill definitions (the brain)
+│   ├── historian/        ← SAVE, LOAD RANGE, BACKFILL procedures
+│   └── researcher/       ← documentation lookup procedures
+├── scripts/              ← shared shell helpers
+│   ├── resolve-project.sh
+│   └── latest-day-file.sh
+├── adapters/             ← per-harness connectors (the nervous system)
+│   ├── claude-code/      ← reference implementation
+│   │   ├── agents/       ← Claude Code agent definitions with frontmatter
+│   │   ├── commands/     ← /load, /save, /team-sync slash commands
+│   │   └── hooks/        ← SessionStart, UserPromptSubmit, Stop hooks
+│   └── README.md         ← adapter contract for building new adapters
+└── CLAUDE.md             ← Claude Code routing rules (appended to ~/.claude/CLAUDE.md)
+```
+
+**Existing Claude Code users see no change** — `install.sh` installs the same files to the same paths in `~/.claude/`. The `skills/` and `adapters/` layout is an internal restructure that separates the brain (harness-agnostic procedures) from the nervous system (Claude Code wiring); the install target is unchanged.
+
+To build an adapter for a different harness, start with `adapters/README.md`.
+
+## Installation (Claude Code adapter)
+
+The following installs the Claude Code adapter — the reference implementation. For other harnesses, start with `adapters/README.md`.
 
 > **Canonical source:** `historian.md` and the related skill and hook files originate in a private upstream repo and are propagated here. Direct edits to these files in context-historian may be overwritten — this repo is the authoritative community release.
 
@@ -184,18 +203,24 @@ Then restart Claude Code.
 
 **Minimum install:** the `SessionStart` and `UserPromptSubmit` hooks handle automatic context injection. The `Stop` hook is optional — it only adds the size notification nudge.
 
+**Session-opening questions (Claude Code):** after installing, verify your `~/.claude/CLAUDE.md` includes a "Session-opening questions" section (the installer appends it automatically). This tells your agent to answer session-opening questions ("what's next?", "where did we leave off?", "catch me up") directly from the injected context rather than re-reading history files as a ritual. If upgrading from an earlier version, add this manually if it's missing:
+
+```
+When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.
+```
+
 ### Manual install
 
 ```bash
 mkdir -p ~/.claude/agents ~/.claude/commands ~/.claude/hooks
 
-cp agents/historian.md    ~/.claude/agents/
-cp agents/researcher.md   ~/.claude/agents/
-cp commands/load.md       ~/.claude/commands/
-cp commands/save.md       ~/.claude/commands/
-cp commands/team-sync.md  ~/.claude/commands/
-cp hooks/*.sh             ~/.claude/hooks/
-chmod +x                  ~/.claude/hooks/*.sh
+cp adapters/claude-code/agents/historian.md    ~/.claude/agents/
+cp adapters/claude-code/agents/researcher.md   ~/.claude/agents/
+cp adapters/claude-code/commands/load.md       ~/.claude/commands/
+cp adapters/claude-code/commands/save.md       ~/.claude/commands/
+cp adapters/claude-code/commands/team-sync.md  ~/.claude/commands/
+cp adapters/claude-code/hooks/*.sh             ~/.claude/hooks/
+chmod +x                                       ~/.claude/hooks/*.sh
 
 # Append this repo's routing rules to your global ~/.claude/CLAUDE.md (or copy if you don't have one).
 # The rules tell Claude to delegate /save and /load to the historian agent,
@@ -221,7 +246,7 @@ Run `/save` before `/clear` or at the end of a substantial session. The historia
 
 Run `/team-sync` to get a plain-English summary of commits by other authors since your last saved session. File overlaps are flagged with `[!]` so you can spot areas where your work and a teammate's may collide.
 
-The summary is written to a team file in `~/.claude/history/<project>/team/` and cross-referenced by the historian at next `/save` — if an OPEN item touches the same file a teammate just changed, the OPEN bullet gets annotated automatically.
+The summary is written to a team file in `$HISTORY_ROOT/<project>/team/` and cross-referenced by the historian at next `/save` — if an OPEN item touches the same file a teammate just changed, the OPEN bullet gets annotated automatically.
 
 Accepts an optional date override: `/team-sync 2026-07-28` to look back from a specific day rather than the last session anchor.
 
@@ -229,7 +254,7 @@ Accepts an optional date override: `/team-sync 2026-07-28` to look back from a s
 
 If you're starting with a project that has no history files, the historian agent can reconstruct day files from `git log`.
 
-Open Claude Code in any directory and ask in plain English:
+Open your agent in any directory and ask in plain English:
 
 > "Backfill history for my projects under ~/code"
 
@@ -241,7 +266,7 @@ BACKFILL writes day files and `TIMELINE.md` only — it does not populate `DECIS
 
 ---
 
-## Platform notes
+## Platform notes (Claude Code adapter)
 
 - **Notifications** — the stop hook fires a notification when the session transcript exceeds 200KB. On macOS this uses `osascript`; on Linux desktop it falls back to `notify-send` (`apt install libnotify-bin` / `dnf install libnotify`). Windows and headless environments get no notification — the hook silently skips.
 - **Date compatibility** — BACKFILL defaults to commits from the past day (yesterday onward). When passing a date range override, both BSD (`date -v-Nd`) and GNU (`date -d "N days ago"`) syntax are accepted; the agent picks whichever works on the current platform.
