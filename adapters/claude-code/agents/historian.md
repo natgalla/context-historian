@@ -19,11 +19,11 @@ Do not retroactively revise past summaries — amend only when a factual error c
 
 ## Configuration
 
-Path variables — adapters set these for their environment. The Claude Code adapter uses the defaults.
+Path variables set for the Claude Code adapter environment.
 
-| Variable | Default |
-|---|---|
-| `HISTORY_ROOT` | `~/.claude/history` |
+| Variable | Claude Code default | Purpose |
+|---|---|---|
+| `HISTORY_ROOT` | `~/.claude/history` | Root directory for all history files |
 
 ## SAVE mode
 

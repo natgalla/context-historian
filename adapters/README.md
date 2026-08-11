@@ -10,7 +10,7 @@ The reference implementation is `adapters/claude-code/`.
 
 ### 1. Session-start injection
 
-On the first prompt of a session, inject the most recent day file for the current project as context. Truncate to STATE and OPEN sections only if the file exceeds 3000 bytes — use `scripts/size-guard.sh` or equivalent logic.
+On the first prompt of a session, inject the most recent day file for the current project as context. Each adapter defines its own truncation strategy based on the harness's context window and injection mechanism — the CC adapter's reference implementation is `adapters/claude-code/hooks/size-guard.sh`.
 
 ### 2. Command registration
 
@@ -38,7 +38,7 @@ Provide a routing rules file (`CLAUDE.md`, `AGENTS.md`, or harness equivalent) t
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `HISTORY_ROOT` | `~/.claude/history` | Root directory for all history files |
+| `HISTORY_ROOT` | `~/.claude/history` (Claude Code adapter default) | Root directory for all history files |
 | `RULES_FILE` | harness default | Path to the routing rules file injected at session start |
 
 ---
@@ -49,7 +49,7 @@ On the first prompt of a session:
 
 1. Resolve the project slug (`scripts/resolve-project.sh` or equivalent)
 2. Find the most recent day file (`scripts/latest-day-file.sh` or equivalent)
-3. Apply the size guard (`scripts/size-guard.sh` or equivalent) — full file if ≤3000 bytes; STATE + OPEN only if larger
+3. Apply truncation appropriate for the harness — each adapter defines its own strategy. The Claude Code adapter uses `adapters/claude-code/hooks/size-guard.sh` as its reference implementation.
 4. Inject the result as additional context before the harness processes the user's prompt
 
 Each adapter implements this via its harness's event system (hooks, middleware, interceptors, etc.).
@@ -78,4 +78,4 @@ When writing an adapter for a different harness, declare the equivalent native t
 
 - `agents/` — historian and researcher agent definitions with Claude Code frontmatter and scope guard
 - `commands/` — `/load`, `/save`, and `/team-sync` slash command definitions
-- `hooks/` — three bash hooks wired into Claude Code's SessionStart, UserPromptSubmit, and Stop events
+- `hooks/` — bash hooks wired into Claude Code's SessionStart, UserPromptSubmit, and Stop events

@@ -3,7 +3,9 @@
 # If file >3000 bytes, print STATE and OPEN sections only. Otherwise print full file.
 FILE="$1"
 if [ "$(wc -c < "$FILE")" -gt 3000 ]; then
-  awk '/^\*\*STATE\*\*/{p=1} /^\*\*DECISIONS\*\*/{p=0} /^\*\*OPEN\*\*/{p=1} /^<!-- HEAD:/{p=0} p' "$FILE"
+  awk '/^\*\*STATE\*\*/{found=1} found && /^\*\*[A-Z]/ && !/^\*\*STATE\*\*/{exit} found{print}' "$FILE"
+  echo ""
+  awk '/^\*\*OPEN\*\*/{found=1} found && /^\*\*[A-Z]/ && !/^\*\*OPEN\*\*/{exit} found{print}' "$FILE"
 else
   cat "$FILE"
 fi

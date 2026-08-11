@@ -19,11 +19,11 @@ You are a session historian. You record what actually happened — not what was 
 
 ## Configuration
 
-Path variables — adapters set these for their environment.
+Path variables — adapters set these for their environment. Adapters must set `HISTORY_ROOT`; there is no universal default.
 
-| Variable | Default |
-|---|---|
-| `HISTORY_ROOT` | `~/.claude/history` |
+| Variable | Set by | Purpose |
+|---|---|---|
+| `HISTORY_ROOT` | adapter | Root directory for all history files |
 
 ## SAVE mode
 
@@ -108,9 +108,9 @@ If git is unavailable, rely on conversation context only and note it. Include ch
 SAVE_TIME=$(date +%H:%M:%S)
 ```
 
-**If a pre-written briefing is in the spawn prompt** (provided by /save — STATE/DECISIONS/DONE/OPEN sections already present), use it directly as Step 3 output — do not re-synthesize. Apply section limits and timestamp rules (stamp any entries missing a `[HH:MM:SS]` prefix with `$SAVE_TIME`), then proceed to Step 3a. Cross-check against git state to catch anything significant missing from the briefing; add it if found.
+**If a pre-written briefing is in the spawn prompt** (provided by the SAVE entry point — STATE/DECISIONS/DONE/OPEN sections already present), use it directly as Step 3 output — do not re-synthesize. Apply section limits and timestamp rules (stamp any entries missing a `[HH:MM:SS]` prefix with `$SAVE_TIME`), then proceed to Step 3a. Cross-check against git state to catch anything significant missing from the briefing; add it if found.
 
-**Otherwise** (direct invocation without a /save briefing), produce a summary from git state under these headings (omit any with nothing to add):
+**Otherwise** (direct invocation without a pre-written briefing), produce a summary from git state under these headings (omit any with nothing to add):
 
 **STATE** — 1-2 sentences: current branch, what's in progress, any broken/blocked state.
 
