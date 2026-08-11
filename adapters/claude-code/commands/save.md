@@ -26,3 +26,5 @@ Omit any section with nothing to add.
 ## Spawn
 
 Pass the synthesized briefing to the historian agent as the spawn prompt, prefixed with `SAVE. Working directory: <cwd>.` The historian will use it as the primary session record, run git checks to verify, and handle all index management (DECISIONS.md, ARCS.md, TIMELINE.md, bibliography).
+
+Do not display the synthesized briefing to the user before spawning — pass it directly to the historian agent without printing it.

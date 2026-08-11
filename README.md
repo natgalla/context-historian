@@ -156,8 +156,7 @@ context-historian/
 │   └── researcher/       ← documentation lookup procedures
 ├── scripts/              ← shared shell helpers
 │   ├── resolve-project.sh
-│   ├── latest-day-file.sh
-│   └── size-guard.sh
+│   └── latest-day-file.sh
 ├── adapters/             ← per-harness connectors (the nervous system)
 │   ├── claude-code/      ← reference implementation
 │   │   ├── agents/       ← Claude Code agent definitions with frontmatter
