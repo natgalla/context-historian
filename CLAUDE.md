@@ -1,5 +1,7 @@
 # Historian routing rules
 
+<!-- This is the Claude Code adapter's routing rules file. For other adapters see adapters/README.md. -->
+
 ## Saving session history
 For `SAVE` (end of session, "wrap up", "I'm done for the day"), invoke the `/save` skill — it delegates to the historian agent. The historian decides what's worth saving. Do not summarize sessions inline.
 

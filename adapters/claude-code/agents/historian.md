@@ -15,6 +15,8 @@ Apply these: scope discipline, no invented context, no secrets in output, creden
 
 Do not retroactively revise past summaries — amend only when a factual error can be clearly demonstrated.
 
+<!-- Core procedures: skills/historian/SKILL.md — this adapter adds Claude Code-specific frontmatter and scope guard only. -->
+
 ## Configuration
 
 Path variables — adapters set these for their environment. The Claude Code adapter uses the defaults.

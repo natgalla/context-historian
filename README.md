@@ -147,6 +147,30 @@ This step is **graceful** — if no tags are found in a session, the historian r
 
 > **Note:** The installer appends `CLAUDE.md` routing rules (historian, researcher, and bibliography conventions) to your `~/.claude/CLAUDE.md` automatically. For manual installs, see the manual install block below.
 
+## Repository structure
+
+```
+context-historian/
+├── skills/               ← agent-neutral skill definitions (the brain)
+│   ├── historian/        ← SAVE, LOAD RANGE, BACKFILL procedures
+│   └── researcher/       ← documentation lookup procedures
+├── scripts/              ← shared shell helpers
+│   ├── resolve-project.sh
+│   ├── latest-day-file.sh
+│   └── size-guard.sh
+├── adapters/             ← per-harness connectors (the nervous system)
+│   ├── claude-code/      ← reference implementation
+│   │   ├── agents/       ← Claude Code agent definitions with frontmatter
+│   │   ├── commands/     ← /load, /save, /team-sync slash commands
+│   │   └── hooks/        ← SessionStart, UserPromptSubmit, Stop hooks
+│   └── README.md         ← adapter contract for building new adapters
+└── CLAUDE.md             ← Claude Code routing rules (appended to ~/.claude/CLAUDE.md)
+```
+
+**Existing Claude Code users see no change** — `install.sh` installs the same files to the same paths in `~/.claude/`. The new `skills/` and `adapters/` layout is an internal restructure; the install target is unchanged.
+
+To build an adapter for a different harness, start with `adapters/README.md`.
+
 ## Installation
 
 > **Canonical source:** `historian.md` and the related skill and hook files originate in a private upstream repo and are propagated here. Direct edits to these files in context-historian may be overwritten — this repo is the authoritative community release.
@@ -189,13 +213,13 @@ Then restart Claude Code.
 ```bash
 mkdir -p ~/.claude/agents ~/.claude/commands ~/.claude/hooks
 
-cp agents/historian.md    ~/.claude/agents/
-cp agents/researcher.md   ~/.claude/agents/
-cp commands/load.md       ~/.claude/commands/
-cp commands/save.md       ~/.claude/commands/
-cp commands/team-sync.md  ~/.claude/commands/
-cp hooks/*.sh             ~/.claude/hooks/
-chmod +x                  ~/.claude/hooks/*.sh
+cp adapters/claude-code/agents/historian.md    ~/.claude/agents/
+cp adapters/claude-code/agents/researcher.md   ~/.claude/agents/
+cp adapters/claude-code/commands/load.md       ~/.claude/commands/
+cp adapters/claude-code/commands/save.md       ~/.claude/commands/
+cp adapters/claude-code/commands/team-sync.md  ~/.claude/commands/
+cp adapters/claude-code/hooks/*.sh             ~/.claude/hooks/
+chmod +x                                       ~/.claude/hooks/*.sh
 
 # Append this repo's routing rules to your global ~/.claude/CLAUDE.md (or copy if you don't have one).
 # The rules tell Claude to delegate /save and /load to the historian agent,
