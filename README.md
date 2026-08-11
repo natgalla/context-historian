@@ -1,26 +1,10 @@
 # context-historian
 
-Open Claude Code in a project. Type your first message. Claude already knows what branch you're on, what was decided last session, and where things stand right now. You didn't do anything — it just knows.
+Open your agent in a project. Type your first message. It already knows what branch you're on, what was decided last session, and where things stand right now. You didn't do anything — it just knows.
 
 That's what context-historian does. It captures session context as you work and injects it automatically at the start of every new session, keyed to the project you're in. Switch projects, get that project's context. No configuration, no "here's where we left off" preamble. When you're ready to close, `/save` distills the session — the historian decides what context carries forward, capturing decisions and open threads without you having to curate it manually. The next session picks up from there.
 
-Under the hood it has two layers. The **skills layer** (`skills/`) carries the historian and researcher procedures — harness-agnostic, with no tool-name assumptions or harness-specific paths. The **Claude Code adapter** (`adapters/claude-code/`) wires those skills into Claude Code via three hooks, two agents, and three slash commands. The automatic injection requires your harness to support session-start and prompt-submit events — without those hooks (or equivalent middleware), context injection falls back to a manual `/load` workflow.
-
-## The Claude Code adapter
-
-Most agent harnesses already have persistence mechanisms — they do different things and context-historian doesn't replace either of them.
-
-**Claude Code's built-in memory** tracks who you are: your preferences, role, recurring feedback, things to avoid. It's user-scoped and follows you across every project. context-historian doesn't touch it — and the historian doesn't write project state back into it. Branch state, blockers, and in-flight work belong in the historian day file, not in auto-memory, because that kind of state goes stale immediately and creates a secondary source that contradicts the historian.
-
-**Recommended (Claude Code-specific):** disable Claude Code's auto-memory engine. Claude Code reads from `~/.claude/projects/*/memory/` and injects `MEMORY.md` into every turn automatically — which conflicts with the historian's model of reading memory on demand rather than injecting it wholesale. Adding `"autoMemoryEnabled": false` to `~/.claude/settings.json` turns the engine off entirely, leaving your historian memory files untouched and loaded only when relevant.
-
-**Your harness's project instructions file** (Claude Code uses `CLAUDE.md`; others use `AGENTS.md` or equivalent) holds static project instructions you write and maintain manually — conventions, constraints, architecture notes that don't change session to session. context-historian doesn't replace it either; the two complement each other.
-
-**context-historian** tracks where each project stands right now: current branch, decisions made this session, what's open, what's still in flight. It's project-scoped, session-dynamic, and updates automatically as you work.
-
-context-historian keys history to the git root of whatever directory you open your agent in. Switch from `api` to `frontend` to `infra` — each project gets its own history injected automatically, with no configuration and no "which project am I in" overhead. The right context shows up because the hook reads your working directory.
-
-The short version: built-in memory knows about you, your project instructions file knows about the project's rules, context-historian knows what happened yesterday.
+Under the hood it has two layers. The **skills layer** (`skills/`) carries the historian and researcher procedures — harness-agnostic, with no tool-name assumptions or harness-specific paths. The **adapter** (`adapters/`) wires those skills into your specific harness via hooks, agents, and commands. The automatic injection requires your harness to support session-start and prompt-submit events — without those hooks (or equivalent middleware), context injection falls back to a manual `/load` workflow. Hooks are the prerequisite for the "it just knows" experience.
 
 ## Building an adapter
 
