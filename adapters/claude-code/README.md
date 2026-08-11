@@ -2,7 +2,68 @@
 
 This is the reference implementation of context-historian for Claude Code. It wires the shared skills layer into Claude Code via three hooks, two agents, and three slash commands.
 
-For installation instructions, see the [main README](../../README.md).
+## Installation
+
+> **Canonical source:** `historian.md` and the related skill and hook files originate in a private upstream repo and are propagated here. Direct edits to these files in context-historian may be overwritten — this repo is the authoritative community release.
+
+> **macOS prerequisite:** macOS ships bash 3.2, but the hooks require bash 4+. Install a current bash before running anything: `brew install bash`. Without it, hooks will silently misbehave and context injection won't work.
+
+```bash
+bash install.sh
+```
+
+The script installs the historian and researcher agents, `/load`, `/save`, and `/team-sync` commands, and three hooks into `~/.claude/`, backing up any existing files first. If you already have a `CLAUDE.md` it appends the historian routing rules rather than overwriting it.
+
+After installing, add the hooks to `~/.claude/settings.json` (Claude Code's global config — create it if it doesn't exist):
+
+```json
+{
+  "hooks": {
+    "SessionStart": [
+      { "matcher": "startup", "hooks": [{ "type": "command", "command": "~/.claude/hooks/session-start-historian.sh" }] },
+      { "matcher": "clear",   "hooks": [{ "type": "command", "command": "~/.claude/hooks/session-start-historian.sh" }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "~/.claude/hooks/user-prompt-submit-historian.sh" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "~/.claude/hooks/stop-historian.sh" }] }
+    ]
+  }
+}
+```
+
+The `startup` and `clear` matcher values are Claude Code's built-in SessionStart triggers — `startup` fires when you open a new session, `clear` fires on `/clear`.
+
+Then restart Claude Code.
+
+**Minimum install:** the `SessionStart` and `UserPromptSubmit` hooks handle automatic context injection. The `Stop` hook is optional — it only adds the size notification nudge.
+
+**Session-opening questions:** after installing, verify your `~/.claude/CLAUDE.md` includes a "Session-opening questions" section (the installer appends it automatically). This tells Claude to answer session-opening questions ("what's next?", "where did we leave off?", "catch me up") directly from the injected context rather than re-reading history files as a ritual. If upgrading from an earlier version, add this manually if it's missing:
+
+```
+When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.
+```
+
+### Manual install
+
+```bash
+mkdir -p ~/.claude/agents ~/.claude/commands ~/.claude/hooks ~/.claude/scripts
+
+cp adapters/claude-code/agents/historian.md    ~/.claude/agents/
+cp adapters/claude-code/agents/researcher.md   ~/.claude/agents/
+cp adapters/claude-code/commands/load.md       ~/.claude/commands/
+cp adapters/claude-code/commands/save.md       ~/.claude/commands/
+cp adapters/claude-code/commands/team-sync.md  ~/.claude/commands/
+cp adapters/claude-code/hooks/*.sh             ~/.claude/hooks/
+cp scripts/*.sh                                ~/.claude/scripts/
+chmod +x ~/.claude/hooks/*.sh ~/.claude/scripts/*.sh
+
+# Append routing rules to your global ~/.claude/CLAUDE.md (or copy if you don't have one)
+cat CLAUDE.md >> ~/.claude/CLAUDE.md
+```
+
+Then add the settings.json snippet above.
 
 ---
 

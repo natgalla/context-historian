@@ -28,13 +28,13 @@ The system gets more useful the longer you run it.
 
 - **Backfillable** — already have a project with months of git history but no historian files? BACKFILL reconstructs day files from `git log` so you're not starting from zero. Existing session-saved files are never overwritten. Backfilled files are marked `(backfilled)` in their header — `# my-app — 2025-11-14 (backfilled)` — so they're visually distinguishable from session-saved summaries and treated as lower-confidence reconstructions.
 
-- **History integrity** — if you ask the historian agent to amend a prior summary, it surfaces the request, quotes the contested text, and requires explicit justification before touching anything. Requests to soften wording or revise narrative without a demonstrable factual error are declined. This covers agent-mediated changes — you can always edit the files directly, and sometimes that's the right call. The protection exists so casual revision requests don't slip through unexamined.
+- **History integrity** — if you ask the historian agent to amend a prior summary, it surfaces the request, quotes the contested text, and requires explicit evidence-based justification before touching anything. Requests to soften wording or revise narrative without a demonstrable factual error are declined. This prevents agent-mediated driveby changes. The protection exists so casual revision requests don't slip through unexamined.
 
 ---
 
 ## What gets stored
 
-History files live at `$HISTORY_ROOT/<project-name>/YYYY-MM-DD.md` (the default for Claude Code is `~/.claude/history`). For sessions with no git repo — stand-alone tasks, exploratory sessions, anything outside a project directory — files go to `$HISTORY_ROOT/.journal/YYYY-MM-DD.md` and the file header uses `journal` as the project label. Each file is a short structured summary with per-section caps (STATE: 2 sentences, DECISIONS: 10 bullets, DONE: 15 bullets, OPEN: 5 bullets):
+History files live at `$HISTORY_ROOT/<project-name>/YYYY-MM-DD.md` (eg. the default for Claude Code is `~/.claude/history`). For sessions with no git repo — stand-alone tasks, exploratory sessions, anything outside a project directory — files go to `$HISTORY_ROOT/.journal/YYYY-MM-DD.md` and the file header uses `journal` as the project label. Each file is a short structured summary with per-section caps (STATE: 2 sentences, DECISIONS: 10 bullets, DONE: 15 bullets, OPEN: 5 bullets):
 
 ```
 # my-app — 2025-11-14
@@ -60,7 +60,7 @@ The agent also maintains a `DECISIONS.md` — a lifecycle-tracked index of the p
 
 The agent also maintains an `ARCS.md` — an index of ongoing and completed work arcs. OPEN items that use `[arc-slug]` syntax are tracked here automatically. When an arc closes (its OPEN item moves to DONE), the index records which session and commit closed it. `ARCS.md` is what drives arc-organized `TIMELINE.md` generation once at least one arc exists.
 
-If you run `/save` more than once on the same day, the historian merges rather than overwrites — STATE is updated to the latest session, and DECISIONS/DONE/OPEN are unioned and deduplicated. Running `/save` twice is safe.
+If you run `/save` more than once on the same day, the historian merges rather than overwrites — STATE is updated to the latest session, and DECISIONS/DONE/OPEN are unioned and deduplicated. Running `/save` multiple times a day (and from multiple sessions) is safe.
 
 ---
 
@@ -90,20 +90,24 @@ If no history file exists for a project at all, use BACKFILL to reconstruct a sc
 
 ## Bibliography
 
-Nothing in the core workflow depends on this — skip it if you don't care about source tracking.
+Nothing in the core workflow depends on this. It's optional if you don't care about source tracking.
 
 The historian builds a bibliography of external sources consulted during a session. The pipeline has three parts:
 
 1. **Any external read** emits a `CITE:` tag — the researcher agent emits one after every source block, and the main agent emits one whenever it uses a web fetch or search tool directly:
+
    ```
    CITE: slug=<kebab-slug> url=<url-or-path> accessed=<YYYY-MM-DD>
    ```
+
    The slug is kebab-case for the resource (not the question). The same document cited twice uses the same slug.
 
 2. When a finding drives a decision, the main agent emits a `DECISION-SOURCE:` marker **immediately in the same response**:
+
    ```
    DECISION-SOURCE: slug=<slug>
    ```
+
    The distinction matters: `CITE:` is a paper trail of everything consulted; `DECISION-SOURCE:` marks what actually drove a choice. A session with many `CITE:` tags and few `DECISION-SOURCE:` markers is normal — it means a lot was looked up but only some of it was load-bearing.
 
 3. At `/save` time, the historian scans the session transcript for both tags and upserts entries into `BIBLIOGRAPHY.md` at the repo root. For journal sessions (no git repo), `BIBLIOGRAPHY.md` is written to `$HISTORY_ROOT/.journal/BIBLIOGRAPHY.md` instead. `CITE:` tags without a matching `DECISION-SOURCE:` still appear in the bibliography — they contribute to the reconstruction record even if they didn't explicitly drive a decision.
@@ -123,7 +127,7 @@ This step is **graceful** — if no tags are found in a session, the historian r
 
 ---
 
-> **Note:** The installer appends routing rules (historian, researcher, and bibliography conventions) to your harness's project instructions file automatically. For Claude Code this is `~/.claude/CLAUDE.md`. For manual installs, see the manual install block below.
+> **Note:** The installer appends routing rules (historian, researcher, and bibliography conventions) to your harness's project instructions file automatically. For manual install steps, see your adapter's README.
 
 ## Repository structure
 
@@ -148,71 +152,11 @@ context-historian/
 
 To build an adapter for a different harness, start with `adapters/README.md`.
 
-## Installation (Claude Code adapter)
+## Installation
 
-The following installs the Claude Code adapter — the reference implementation. For other harnesses, start with `adapters/README.md`.
+For the **Claude Code adapter** (reference implementation) — see [`adapters/claude-code/README.md`](adapters/claude-code/README.md).
 
-> **Canonical source:** `historian.md` and the related skill and hook files originate in a private upstream repo and are propagated here. Direct edits to these files in context-historian may be overwritten — this repo is the authoritative community release.
-
-> **macOS prerequisite:** macOS ships bash 3.2, but the hooks require bash 4+. Install a current bash before running anything: `brew install bash`. Without it, hooks will silently misbehave and context injection won't work.
-
-```bash
-bash install.sh
-```
-
-The script installs the historian and researcher agents, `/load`, `/save`, and `/team-sync` commands, and three hooks into `~/.claude/`, backing up any existing files first. If you already have a `CLAUDE.md` it appends the historian routing rules rather than overwriting it.
-
-After installing, add the hooks to `~/.claude/settings.json` (Claude Code's global config — create it if it doesn't exist):
-
-```json
-{
-  "hooks": {
-    "SessionStart": [
-      { "matcher": "startup", "hooks": [{ "type": "command", "command": "~/.claude/hooks/session-start-historian.sh" }] },
-      { "matcher": "clear",   "hooks": [{ "type": "command", "command": "~/.claude/hooks/session-start-historian.sh" }] }
-    ],
-    "UserPromptSubmit": [
-      { "hooks": [{ "type": "command", "command": "~/.claude/hooks/user-prompt-submit-historian.sh" }] }
-    ],
-    "Stop": [
-      { "hooks": [{ "type": "command", "command": "~/.claude/hooks/stop-historian.sh" }] }
-    ]
-  }
-}
-```
-
-The `startup` and `clear` matcher values are Claude Code's built-in SessionStart triggers — `startup` fires when you open a new session, `clear` fires on `/clear`.
-
-Then restart Claude Code.
-
-**Minimum install:** the `SessionStart` and `UserPromptSubmit` hooks handle automatic context injection. The `Stop` hook is optional — it only adds the size notification nudge.
-
-**Session-opening questions (Claude Code):** after installing, verify your `~/.claude/CLAUDE.md` includes a "Session-opening questions" section (the installer appends it automatically). This tells your agent to answer session-opening questions ("what's next?", "where did we leave off?", "catch me up") directly from the injected context rather than re-reading history files as a ritual. If upgrading from an earlier version, add this manually if it's missing:
-
-```
-When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.
-```
-
-### Manual install
-
-```bash
-mkdir -p ~/.claude/agents ~/.claude/commands ~/.claude/hooks
-
-cp adapters/claude-code/agents/historian.md    ~/.claude/agents/
-cp adapters/claude-code/agents/researcher.md   ~/.claude/agents/
-cp adapters/claude-code/commands/load.md       ~/.claude/commands/
-cp adapters/claude-code/commands/save.md       ~/.claude/commands/
-cp adapters/claude-code/commands/team-sync.md  ~/.claude/commands/
-cp adapters/claude-code/hooks/*.sh             ~/.claude/hooks/
-chmod +x                                       ~/.claude/hooks/*.sh
-
-# Append this repo's routing rules to your global ~/.claude/CLAUDE.md (or copy if you don't have one).
-# The rules tell Claude to delegate /save and /load to the historian agent,
-# use the researcher agent for documentation lookups, and emit DECISION-SOURCE markers.
-cat CLAUDE.md >> ~/.claude/CLAUDE.md
-```
-
-Then add the settings.json snippet above.
+For other harnesses — see [`adapters/README.md`](adapters/README.md) for the adapter contract.
 
 ---
 
