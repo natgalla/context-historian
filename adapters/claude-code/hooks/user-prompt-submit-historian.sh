@@ -11,20 +11,18 @@ SENTINEL="/tmp/claude-historian-${SESSION_ID}.sentinel"
 [ -f "$SENTINEL" ] || exit 0
 rm -f "$SENTINEL"
 
-# Derive project name from git remote, fall back to git root basename
-PROJECT_NAME=$(git -C "$CWD" remote get-url origin 2>/dev/null | xargs basename -s .git 2>/dev/null)
-if [ -z "$PROJECT_NAME" ]; then
-  PROJECT_NAME=$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null | xargs basename 2>/dev/null)
-fi
+HISTORY_ROOT="$HOME/.claude/history"
+
+PROJECT_NAME=$(bash "$(dirname "$0")/../scripts/resolve-project.sh")
 
 # Use project subdirectory when in a git repo; .journal fallback for non-git sessions
 if [ -n "$PROJECT_NAME" ]; then
-  HISTORY_DIR="$HOME/.claude/history/$PROJECT_NAME"
+  HISTORY_DIR="$HISTORY_ROOT/$PROJECT_NAME"
 else
-  HISTORY_DIR="$HOME/.claude/history/.journal"
+  HISTORY_DIR="$HISTORY_ROOT/.journal"
 fi
 
-HISTORY_FILE=$(ls "$HISTORY_DIR"/*.md 2>/dev/null | grep -v TIMELINE | sort | tail -1)
+HISTORY_FILE=$(bash "$(dirname "$0")/../scripts/latest-day-file.sh" "$HISTORY_ROOT" "${PROJECT_NAME:-.journal}")
 [ -f "$HISTORY_FILE" ] || exit 0
 
 # Always inject only STATE and OPEN — full history is available via /load or by reading the file directly.

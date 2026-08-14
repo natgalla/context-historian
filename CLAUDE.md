@@ -1,5 +1,7 @@
 # Historian routing rules
 
+<!-- This is the Claude Code adapter's routing rules file. For other adapters see adapters/README.md. -->
+
 ## Saving session history
 For `SAVE` (end of session, "wrap up", "I'm done for the day"), invoke the `/save` skill — it delegates to the historian agent. The historian decides what's worth saving. Do not summarize sessions inline.
 
@@ -38,13 +40,15 @@ Use the same slug from the `CITE:` tag. Emit at the moment of the decision, not 
 ## Decisions and arcs indexes
 Alongside `TIMELINE.md` and `BIBLIOGRAPHY.md`, the historian maintains two per-project indexes automatically at `/save` time — do not edit any of these files manually. (`TIMELINE.md` is regenerated from scratch on each `/save` where a new day file was written or arc data changed; otherwise it is left untouched. The others are append/upsert updated.)
 
-`DECISIONS.md` — a lifecycle-tracked index of architectural decisions (when each first appeared, was last restated, and whether it was superseded, graduated to a standing doc, or retired).
+`DECISIONS.md` — a lifecycle-tracked index of architectural decisions (when each first appeared, was last restated, and whether it was superseded, graduated to a standing doc, or retired). Graduation (age >30 days, restated within the last 14) and retirement (unseen >60 days) are triggered automatically by the historian at `/save` time — no user confirmation gate.
 
 `ARCS.md` — an index of work arcs: ongoing and completed threads tracked via the `[arc-slug]` syntax in OPEN items. When `ARCS.md` exists, `TIMELINE.md` leads with arc-organized sections followed by a full chronological section — both views coexist in one file. Stale arcs (open >60 days, quiet >30 days) are surfaced in `/save` output for user confirmation — never auto-closed.
 
 ## Backfilled history files
 
 Day files reconstructed by BACKFILL are marked with `(backfilled)` in their header (`# project — YYYY-MM-DD (backfilled)`). When one of these is injected or loaded, surface it as a best-effort reconstruction from git history — branch state and commit messages only. Do not present it with the same confidence as a session-saved summary. Context that didn't make it into commit messages (decisions, reasoning, abandoned approaches, open questions) will not appear in it.
+
+BACKFILL populates day files and `TIMELINE.md` only — it does not populate `DECISIONS.md` or `ARCS.md`. Those indexes start building from the first real `/save`.
 
 ## Session-opening questions
 When responding to session-opening questions ("what's next?", "where did we leave off?", "catch me up"), the prompt-submit hook has already injected project context — answer directly using it. Do not narrate a state check or re-read history files as a ritual before answering.

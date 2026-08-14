@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+# Layout (as of phase 1 harness-agnostic restructure):
+#   skills/historian/SKILL.md, skills/researcher/SKILL.md  — agent-neutral skill definitions
+#   scripts/                                                — shared helper scripts
+#   adapters/claude-code/agents/                           — Claude Code agent definitions (installed to ~/.claude/agents/)
+#   adapters/claude-code/commands/                         — slash commands (installed to ~/.claude/commands/)
+#   adapters/claude-code/hooks/                            — session hooks (installed to ~/.claude/hooks/)
+#   CLAUDE.md                                              — routing rules (appended to ~/.claude/CLAUDE.md)
+#
+# This installer targets the Claude Code adapter. For other adapters see adapters/README.md.
+# Phase 2 will extend this script to install skills/ and scripts/ to their own target paths.
 set -euo pipefail
 
 if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
@@ -17,7 +27,7 @@ echo "Destination: $DEST"
 echo ""
 echo "This script will:"
 echo "  - Back up any existing CLAUDE.md, commands/load.md, commands/save.md,"
-echo "    commands/team-sync.md, agents/historian.md, and hooks/ to $BACKUP_DIR"
+echo "    commands/team-sync.md, agents/historian.md, agents/researcher.md, and hooks/ to $BACKUP_DIR"
 echo "  - Install the historian agent, /load, /save, and /team-sync commands, and three hooks"
 echo "  - Merge CLAUDE.md routing rules into your existing $DEST/CLAUDE.md"
 echo "    (appends if the file exists; creates it if not)"
@@ -32,28 +42,34 @@ mkdir -p "$BACKUP_DIR"
 [[ -f "$DEST/commands/load.md" ]]           && cp "$DEST/commands/load.md"           "$BACKUP_DIR/load.md"
 [[ -f "$DEST/commands/save.md" ]]           && cp "$DEST/commands/save.md"           "$BACKUP_DIR/save.md"
 [[ -f "$DEST/commands/team-sync.md" ]]      && cp "$DEST/commands/team-sync.md"      "$BACKUP_DIR/team-sync.md"
-[[ -f "$DEST/agents/historian.md" ]]        && cp "$DEST/agents/historian.md"        "$BACKUP_DIR/historian.md"
-[[ -f "$DEST/agents/researcher.md" ]]      && cp "$DEST/agents/researcher.md"      "$BACKUP_DIR/researcher.md"
+[[ -f "$DEST/agents/historian.md" ]]        && cp "$DEST/agents/historian.md"         "$BACKUP_DIR/historian.md"
+[[ -f "$DEST/agents/researcher.md" ]]      && cp "$DEST/agents/researcher.md"        "$BACKUP_DIR/researcher.md"
 [[ -d "$DEST/hooks" ]]                      && cp -r "$DEST/hooks"                   "$BACKUP_DIR/hooks"
 [[ -f "$DEST/settings.json" ]]              && cp "$DEST/settings.json"              "$BACKUP_DIR/settings.json"
 echo "Backups written to $BACKUP_DIR"
 echo "IMPORTANT: settings.json was backed up but NOT modified. Merge the hooks block shown below manually — copy-pasting over an existing file will lose your current config."
 echo ""
 
-# Install agent and commands
+# Install agent and commands (from claude-code adapter)
 mkdir -p "$DEST/agents" "$DEST/commands"
-cp "$SCRIPT_DIR/agents/historian.md"   "$DEST/agents/historian.md"
-cp "$SCRIPT_DIR/agents/researcher.md"  "$DEST/agents/researcher.md"
-cp "$SCRIPT_DIR/commands/load.md"       "$DEST/commands/load.md"
-cp "$SCRIPT_DIR/commands/save.md"       "$DEST/commands/save.md"
-cp "$SCRIPT_DIR/commands/team-sync.md"  "$DEST/commands/team-sync.md"
+cp "$SCRIPT_DIR/adapters/claude-code/agents/historian.md"   "$DEST/agents/historian.md"
+cp "$SCRIPT_DIR/adapters/claude-code/agents/researcher.md"  "$DEST/agents/researcher.md"
+cp "$SCRIPT_DIR/adapters/claude-code/commands/load.md"       "$DEST/commands/load.md"
+cp "$SCRIPT_DIR/adapters/claude-code/commands/save.md"       "$DEST/commands/save.md"
+cp "$SCRIPT_DIR/adapters/claude-code/commands/team-sync.md"  "$DEST/commands/team-sync.md"
 echo "Installed historian and researcher agents and /load, /save, /team-sync commands"
 
-# Install hooks
+# Install shared helper scripts
+mkdir -p "$DEST/scripts"
+cp "$SCRIPT_DIR/scripts/"*.sh "$DEST/scripts/"
+chmod +x "$DEST/scripts/"*.sh
+echo "Installed shared scripts to $DEST/scripts/"
+
+# Install hooks (from claude-code adapter)
 mkdir -p "$DEST/hooks"
-cp "$SCRIPT_DIR/hooks/"*.sh "$DEST/hooks/"
+cp "$SCRIPT_DIR/adapters/claude-code/hooks/"*.sh "$DEST/hooks/"
 chmod +x "$DEST/hooks/"*.sh
-hook_count=$(ls "$SCRIPT_DIR/hooks/"*.sh 2>/dev/null | wc -l | tr -d ' ')
+hook_count=$(ls "$SCRIPT_DIR/adapters/claude-code/hooks/"*.sh 2>/dev/null | wc -l | tr -d ' ')
 echo "Installed $hook_count hooks"
 
 # Merge CLAUDE.md routing rules
