@@ -15,7 +15,7 @@ Delegate to the **historian** agent directly for `BACKFILL` (reconstruct history
 If `/load` is invoked with no arguments, explain that the prompt-submit hook already injected current session context and ask which date (or date range) the user wants.
 
 ## Team sync
-`/team-sync` is handled by the team-sync command, which collects commits, composes the summary, and writes the team file directly. The historian agent is not invoked. Do not spawn the full SAVE pipeline for team-sync calls.
+`/team-sync` is handled by the team-sync command, which collects commits from `origin/main`, organizes them by date and author, then delegates file writes to the historian agent. Do not spawn the full SAVE pipeline for team-sync calls.
 
 ## Researcher agent
 Delegate factual questions that require reading documentation to the **researcher** agent — API behavior, library docs, version constraints, external specs. Do not answer from memory or fetch docs inline.

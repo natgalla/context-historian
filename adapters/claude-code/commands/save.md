@@ -23,6 +23,18 @@ The historian runs in an isolated context — it receives no parent conversation
 
 Omit any section with nothing to add.
 
+## Citations
+
+Before spawning, scan the conversation for any external sources consulted — GitHub PRs, web pages, docs, API responses. For each, emit a `CITE` tag in the briefing:
+
+`CITE: slug=<kebab-slug> url=<url> accessed=<YYYY-MM-DD>`
+
+If a cited source grounded a DECISION, also emit:
+
+`DECISION-SOURCE: slug=<slug>`
+
+If the historian asks whether external sources were consulted, always answer yes if any tool calls fetched external content (GitHub API, web fetch, etc.) and provide the citations. Do not leave the question unanswered.
+
 ## Spawn
 
 Pass the synthesized briefing to the historian agent as the spawn prompt, prefixed with `SAVE. Working directory: <cwd>.` The historian will use it as the primary session record, run git checks to verify, and handle all index management (DECISIONS.md, ARCS.md, TIMELINE.md, bibliography).
