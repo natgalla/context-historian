@@ -91,7 +91,7 @@ The short version: built-in memory knows about you, `CLAUDE.md` knows about the 
 | `agents/researcher.md` | Researcher agent — documentation lookup with `CITE:` emission |
 | `commands/load.md` | `/load` slash command — single-date file retrieval and git divergence check |
 | `commands/save.md` | `/save` slash command — briefing synthesis + historian delegation |
-| `commands/team-sync.md` | `/team-sync` slash command — teammate commit summary |
+| `commands/team-sync.md` | `/team-sync` slash command — per-day teammate commit log, delegated to historian |
 | `hooks/session-start-historian.sh` | SessionStart hook — leaves a sentinel to identify first-prompt sessions |
 | `hooks/user-prompt-submit-historian.sh` | UserPromptSubmit hook — injects STATE + OPEN from the most recent day file |
 | `hooks/stop-historian.sh` | Stop hook — fires a notification when session transcript grows large |

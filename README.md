@@ -172,9 +172,9 @@ Run `/save` before `/clear` or at the end of a substantial session. The historia
 
 ### `/team-sync` — see what teammates have landed
 
-Run `/team-sync` to get a plain-English summary of commits by other authors since your last saved session. File overlaps are flagged with `[!]` so you can spot areas where your work and a teammate's may collide.
+Run `/team-sync` to write per-day team activity files for commits other authors have landed on `main` since your last saved session. One file per commit date, raw commit subjects grouped by author — no synthesis. File overlaps with your own changes are flagged with `[!]` in the presented index so you can spot areas where your work and a teammate's may collide.
 
-The summary is written to a team file in `$HISTORY_ROOT/<project>/team/` and cross-referenced by the historian at next `/save` — if an OPEN item touches the same file a teammate just changed, the OPEN bullet gets annotated automatically.
+Team files are written to `$HISTORY_ROOT/<project>/team/` by the historian agent and cross-referenced at next `/save`.
 
 Accepts an optional date override: `/team-sync 2026-07-28` to look back from a specific day rather than the last session anchor.
 
