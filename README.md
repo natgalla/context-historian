@@ -66,7 +66,7 @@ If you run `/save` more than once on the same day, the historian merges rather t
 
 ## How sessions connect
 
-When you start a session, the prompt-submit hook fires before your agent sees the message. It reads the most recent history file for the current project, injects only the STATE and OPEN sections as context — silently, automatically — and appends a note pointing to `/load` for the full entry. By the time your agent responds to your first message, it already knows where the project stands.
+When you start a session, the prompt-submit hook fires before the first message your agent sees. It reads the most recent history file for the current project, injects only the STATE and OPEN sections as context — silently, automatically — and appends a note pointing to `/load` for the full entry. By the time your agent responds to your first message, it already knows where the project stands.
 
 `/load` is for surfacing context from a past session, not the current one. Run it with a date — `2026-07-28`, `yesterday`, `last week`, `3 days ago` — and it finds that day's history file. If a `TIMELINE.md` exists for the project, it's presented first as a project arc overview; then the day file is shown, labeled as historical context; then a divergence check shows what changed between that snapshot and today. If no file exists for the requested date, it lists what's available instead of silently falling back. If invoked with no date, `/load` explains that the hook already injected current session context and prompts you to specify a date or date range.
 

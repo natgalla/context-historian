@@ -19,7 +19,7 @@ The historian runs in an isolated context — it receives no parent conversation
 
 **DONE** — `- [HH:MM:SS] <what changed> (<file or commit ref>)`. Confirmed changes only; no reverted work. Max 15.
 
-**OPEN** — Unresolved items; omit if empty. Arc slug syntax: `[arc-slug] <description>`. Max 5.
+**OPEN** — Unresolved items; omit if empty. Arc slug syntax: `[arc-slug] <description>`. Max 5. Do not open arcs for pending CI runs — CI resolves itself and cannot be tracked or closed by the historian.
 
 Omit any section with nothing to add.
 

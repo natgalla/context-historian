@@ -38,6 +38,8 @@ fi
 - **Git repo without remote:** fall back to git root basename.
 - **No git repo:** `PROJECT_NAME` is empty — journal session. Write to `.journal/` (see Step 4).
 
+**Hard guard — never invent a fallback name.** If both commands above return empty, `PROJECT_NAME` must remain empty. Do not use the working directory basename, the spawn prompt's working directory path, or any other heuristic. A non-git working directory is always a journal session.
+
 ### Step 1a — Detect duplicate/split history directories
 
 **Skip this step entirely** when the slug is empty (journal session) or the project could not be identified.
@@ -253,7 +255,16 @@ Update `<!-- last-updated -->` on every write.
 
 **Skip this step entirely** if the project is unidentified. **Exception: journal sessions always run this step** — use `$HISTORY_ROOT/.journal/BIBLIOGRAPHY.md`.
 
-Bibliography path: `<repo-root>/BIBLIOGRAPHY.md` for named repos; `$HISTORY_ROOT/.journal/BIBLIOGRAPHY.md` for journal sessions.
+Bibliography path: `$HISTORY_ROOT/<project-name>/BIBLIOGRAPHY.md` for named repos; `$HISTORY_ROOT/.journal/BIBLIOGRAPHY.md` for journal sessions.
+
+#### 4c-0: Migrate misplaced bibliography
+
+Before reading or writing, check whether a `BIBLIOGRAPHY.md` exists at `<repo-root>/BIBLIOGRAPHY.md`. If found:
+
+1. Check whether `$HISTORY_ROOT/<project-name>/BIBLIOGRAPHY.md` already exists.
+   - **Does not exist** — move the file: copy to the correct path, then delete the repo-root copy.
+   - **Already exists** — merge: append any `### <slug>` entries from the repo-root copy that are not already present in the history copy (match by slug heading), then delete the repo-root copy.
+2. Report: "Bibliography: migrated from `<repo-root>/BIBLIOGRAPHY.md` → `$HISTORY_ROOT/<project-name>/BIBLIOGRAPHY.md`" (or "merged N entries, deleted repo-root copy").
 
 #### 4c-1: Collect CITE tags
 
