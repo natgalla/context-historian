@@ -497,6 +497,44 @@ After writing all day files for a project, synthesize `TIMELINE.md` using the da
 
 ---
 
+## CLOSE ARCS mode
+
+Closes one or more stale arcs in `ARCS.md`. Called by the save skill after evidence-gathering and user verdict collection — the caller has already confirmed each close. Do not prompt for confirmation.
+
+### Step 1 — Identify the project
+
+Same as SAVE Step 1.
+
+### Step 2 — Parse the close list
+
+Each line in the prompt body has the form:
+
+```
+<slug> | <closed-by reason>
+```
+
+### Step 3 — Apply closes
+
+Read `ARCS.md`. For each slug:
+
+- Set `closed: <today>` (YYYY-MM-DD)
+- Set `closed-by: <closed-by reason>`
+
+If a slug is not found or already has a non-`—` `closed` value, skip it and note in the report.
+
+Update `<!-- last-updated: <today> -->`.
+
+Permitted under history protection rules — ARCS.md in-place update (same permission class as SAVE Step 4b).
+
+### Step 4 — Report
+
+```
+Closed N arcs: [slug1], [slug2], ...
+Skipped: [slug] — <not found | already closed>
+```
+
+---
+
 ## Constraints
 
 - Never invent or infer changes not confirmed in git state or explicitly stated in the conversation.

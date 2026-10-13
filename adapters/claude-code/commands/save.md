@@ -40,3 +40,40 @@ If the historian asks whether external sources were consulted, always answer yes
 Pass the synthesized briefing to the historian agent as the spawn prompt, prefixed with `SAVE. Working directory: <cwd>.` The historian will use it as the primary session record, run git checks to verify, and handle all index management (DECISIONS.md, ARCS.md, TIMELINE.md, bibliography).
 
 Do not display the synthesized briefing to the user before spawning — pass it directly to the historian agent without printing it.
+
+## Post-historian: Stale arc resolution
+
+If the historian's output contains a "Stale arcs" line, run the following resolution flow before closing the save. Do not skip this — stale arcs left unresolved accumulate across sessions.
+
+**Step 1 — Extract stale slugs.** Parse each `[arc-slug]` from the historian's stale arc report.
+
+**Step 2 — Read ARCS.md.** Read the project's ARCS.md to retrieve the `summary` for each stale arc.
+
+**Step 3 — Gather evidence for PR arcs.** For any arc whose summary mentions "PR #N", run:
+
+```bash
+gh pr view N --repo <remote> --json number,title,state
+```
+
+A `MERGED` or `CLOSED` result is sufficient evidence to auto-close. Record the slug, PR state, and title.
+
+**Step 4 — Present for resolution.** Display two groups:
+
+*Auto-closing (evidence-backed):*
+- `[slug]` — PR #N merged: "title"
+
+*Needs your verdict — for each, reply: `still active` / `close: <reason>` / `conclude` (not pursuing):*
+- `[slug]` — summary
+
+Wait for explicit verdicts on all ambiguous arcs before proceeding. Do not proceed with partial verdicts.
+
+**Step 5 — Spawn historian in CLOSE ARCS mode.** Pass all confirmed closes (evidence-backed + user-confirmed) as the spawn prompt:
+
+```
+CLOSE ARCS. Working directory: <cwd>.
+
+<slug> | <closed-by reason>
+<slug> | <closed-by reason>
+```
+
+The historian writes the closes to ARCS.md. Do not edit ARCS.md directly.
