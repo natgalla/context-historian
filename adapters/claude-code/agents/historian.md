@@ -268,11 +268,15 @@ Before reading or writing, check whether a `BIBLIOGRAPHY.md` exists at `<repo-ro
 
 #### 4c-1: Collect CITE tags
 
-Scan the session transcript for: `CITE: slug=<slug> url=<url> accessed=<date>`. Extract every unique slug with its url and accessed date. If none found, skip remaining sub-steps and report "Bibliography: skipped (no CITE tags this session)".
+In a single scan of the session transcript, extract:
+- `CITE: slug=<slug> url=<url> accessed=<date>` — every unique slug with its url and accessed date
+- `CITE-SUMMARY: slug=<slug> conclusion="<text>"` — associate the conclusion with its slug
+
+A CITE-SUMMARY without a matching CITE in the same session is ignored. If no CITE tags are found, skip remaining sub-steps and report "Bibliography: skipped (no CITE tags this session)".
 
 #### 4c-2: Identify load-bearing sources
 
-For each slug, check for `DECISION-SOURCE: slug=<slug>` in the transcript. Mark each slug as **load-bearing** (has DECISION-SOURCE) or **consulted** (CITE only). Both are written to the bibliography.
+For each slug, check for `DECISION-SOURCE: slug=<slug>` in the transcript. Mark each slug as **load-bearing** (has DECISION-SOURCE) or **consulted** (CITE only). Load-bearing status is evaluated fresh from the current session — do not inherit it from the existing per-project bib entry. Both load-bearing and consulted entries are written to the per-project bibliography.
 
 #### 4c-3: Load existing bibliography
 
@@ -288,10 +292,10 @@ Sources consulted during this project. Maintained by the historian agent — do 
 
 If it exists, read it and parse existing slugs from `### <slug>` headings.
 
-#### 4c-4: Upsert entries
+#### 4c-4: Upsert entries (per-project bibliography)
 
-- **New slug** — append entry. For load-bearing, populate `Decision` with the exact wording from this session's DECISIONS. For consulted-only, omit `Decision`.
-- **Existing slug** — append today to `Sessions:` (idempotent). If no `Decision` field but now load-bearing, add it.
+- **New slug** — append entry. Populate `Conclusion` from the CITE-SUMMARY if present. For load-bearing, populate `Decision` with the exact wording from this session's DECISIONS. For consulted-only, omit `Decision`.
+- **Existing slug** — append today to `Sessions:` (idempotent). If no `Conclusion` field and a CITE-SUMMARY is present this session, add it (first-wins: never overwrite an existing conclusion). If no `Decision` field but now load-bearing, add it.
 
 Entry format:
 ```markdown
@@ -299,7 +303,47 @@ Entry format:
 
 - **Source:** <url or file path>
 - **Accessed:** <accessed date>
+- **Conclusion:** <one sentence from CITE-SUMMARY — what the source established>  ← omit if no CITE-SUMMARY
 - **Decision:** <one sentence — the lasting decision this source grounded>  ← omit if consulted only
+- **Sessions:** <YYYY-MM-DD>[, ...]
+```
+
+Update `<!-- last-updated -->` on every write.
+
+#### 4c-4b: Upsert load-bearing entries into global bibliography
+
+**Skip this sub-step** if no load-bearing slugs were identified this session.
+
+Global bibliography path: `$HISTORY_ROOT/bibliography.md`.
+
+If the file doesn't exist, create it with:
+
+```markdown
+# Bibliography
+
+Cross-project research index. Load-bearing sources only — each drove at least one DECISION-SOURCE. Ranked by influence count descending, then first-seen date descending.
+
+Maintained by the historian agent — do not edit manually.
+
+<!-- last-updated: YYYY-MM-DD -->
+```
+
+For each load-bearing slug this session:
+
+- **New slug** — append entry with `Influence: 1`, `Projects: <current-project>`, `Sessions: <today>`. Populate `Conclusion` from CITE-SUMMARY if present (leave blank if absent). A DECISION-SOURCE with no matching CITE is not eligible — skip it.
+- **Existing slug** — increment `Influence` count by 1. Append `<current-project>` to `Projects` if not already listed (idempotent). Append `<today>` to `Sessions` (idempotent). If no `Conclusion` is stored and a CITE-SUMMARY is present this session, add it (first-wins: never overwrite an existing conclusion).
+
+After all upserts, re-sort entries by `Influence` count descending. Use first `Accessed` date descending as the tiebreaker. Only re-sort if at least one entry was written or updated this session.
+
+Global entry format:
+```markdown
+### <slug>
+
+- **Source:** <url or file path>
+- **Accessed:** <first-seen date>
+- **Conclusion:** <one sentence from CITE-SUMMARY>  ← blank if no CITE-SUMMARY ever recorded
+- **Influence:** <N> decisions across <M> projects
+- **Projects:** <name>[, ...]
 - **Sessions:** <YYYY-MM-DD>[, ...]
 ```
 
@@ -311,6 +355,8 @@ Include in Step 5 report:
 - "Bibliography: N new entries added (X load-bearing, Y consulted)"
 - "Bibliography: N existing entries updated (sessions field)"
 - "Bibliography: skipped (no CITE tags this session)"
+- "Global bibliography: N entries upserted, M influence counts incremented" ← omit if 4c-4b was skipped
+- "Global bibliography: skipped (no load-bearing slugs this session)" ← include when 4c-4b was skipped due to no load-bearing slugs
 
 If DECISIONS is non-empty but no CITE tags found, surface: "N decisions recorded but no CITE tags found — were any external sources consulted?"
 

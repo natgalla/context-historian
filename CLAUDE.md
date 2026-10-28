@@ -29,6 +29,14 @@ CITE: slug=<kebab-slug> url=<url-or-path> accessed=<YYYY-MM-DD>
 ## Citing external sources
 Any external read — whether from the researcher agent or a direct WebFetch/WebSearch call — must produce a `CITE:` tag in the response where the result is used. The slug is kebab-case for the resource (not the question); the same document cited twice uses the same slug.
 
+Immediately after a `CITE:`, also emit a `CITE-SUMMARY:` tag with a one-sentence statement of what the source established:
+
+```
+CITE-SUMMARY: slug=<slug> conclusion="<one sentence>"
+```
+
+The historian uses this to populate the `Conclusion` field in `BIBLIOGRAPHY.md`.
+
 When a finding drives a decision, emit a `DECISION-SOURCE:` marker immediately in the same response:
 
 ```

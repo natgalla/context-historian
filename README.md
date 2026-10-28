@@ -100,7 +100,13 @@ The historian builds a bibliography of external sources consulted during a sessi
    CITE: slug=<kebab-slug> url=<url-or-path> accessed=<YYYY-MM-DD>
    ```
 
-   The slug is kebab-case for the resource (not the question). The same document cited twice uses the same slug.
+   Optionally, immediately after a `CITE:`, emit a `CITE-SUMMARY:` tag with a one-sentence statement of what the source established:
+
+   ```
+   CITE-SUMMARY: slug=<kebab-slug> conclusion="<one sentence>"
+   ```
+
+   The historian uses this to populate the `Conclusion` field in `BIBLIOGRAPHY.md`. The slug is kebab-case for the resource (not the question). The same document cited twice uses the same slug.
 
 2. When a finding drives a decision, the main agent emits a `DECISION-SOURCE:` marker **immediately in the same response**:
 
@@ -110,7 +116,7 @@ The historian builds a bibliography of external sources consulted during a sessi
 
    The distinction matters: `CITE:` is a paper trail of everything consulted; `DECISION-SOURCE:` marks what actually drove a choice. A session with many `CITE:` tags and few `DECISION-SOURCE:` markers is normal — it means a lot was looked up but only some of it was load-bearing.
 
-3. At `/save` time, the historian scans the session transcript for both tags and upserts entries into `BIBLIOGRAPHY.md` at the repo root. For journal sessions (no git repo), `BIBLIOGRAPHY.md` is written to `$HISTORY_ROOT/.journal/BIBLIOGRAPHY.md` instead. `CITE:` tags without a matching `DECISION-SOURCE:` still appear in the bibliography — they contribute to the reconstruction record even if they didn't explicitly drive a decision.
+3. At `/save` time, the historian scans the session transcript for both tags and upserts entries into `$HISTORY_ROOT/<project-name>/BIBLIOGRAPHY.md`. For journal sessions (no git repo), `BIBLIOGRAPHY.md` is written to `$HISTORY_ROOT/.journal/BIBLIOGRAPHY.md` instead. Load-bearing sources also propagate to a cross-project global index at `$HISTORY_ROOT/bibliography.md`, ranked by influence count across all projects. `CITE:` tags without a matching `DECISION-SOURCE:` still appear in the per-project bibliography — they contribute to the reconstruction record even if they didn't explicitly drive a decision.
 
 This step is **graceful** — if no tags are found in a session, the historian reports "Bibliography: skipped (no CITE tags this session)" and moves on. Nothing breaks if you don't use it.
 
@@ -143,7 +149,7 @@ context-historian/
 │   ├── claude-code/      ← reference implementation
 │   │   ├── agents/       ← Claude Code agent definitions with frontmatter
 │   │   ├── commands/     ← /load, /save, /team-sync slash commands
-│   │   └── hooks/        ← SessionStart, UserPromptSubmit, Stop hooks
+│   │   └── hooks/        ← SessionStart, UserPromptSubmit, Stop hooks; size-guard.sh helper
 │   └── README.md         ← adapter contract for building new adapters
 └── CLAUDE.md             ← Claude Code routing rules (appended to ~/.claude/CLAUDE.md)
 ```
