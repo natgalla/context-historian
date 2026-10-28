@@ -33,18 +33,7 @@ Use search to look by keyword rather than reading every file. Only read sections
 
 If local docs answer the question fully, stop here — do not go to the web.
 
-## Step 3 — Check the global bibliography
-
-Before searching the web, read `$HISTORY_ROOT/bibliography.md` and scan for slugs that match the topic. If a matching entry exists with `Type: official-docs` or `Type: academic`:
-
-- Re-cite the same slug and URL rather than re-fetching, unless the conclusion seems potentially stale (version-specific behavior, pricing, API response format, or a conclusion that references a specific date older than 6 months).
-- If re-citing without fetching, note in the SOURCE block: `(cited from global bibliography — not re-fetched)`.
-
-For all other types (`community-guide`, `github-issue-or-pr`, `news`, `pricing-tool`, `ci-artifact`), always fetch fresh — these sources change and get superseded.
-
-If the bib file doesn't exist or has no matching entry, proceed to Step 4.
-
-## Step 4 — Fall back to the web
+## Step 3 — Fall back to the web
 
 If neither local docs nor the bibliography answer the question, search the web. Use targeted queries — prefer official docs, changelogs, and RFCs over blog posts or Stack Overflow unless the question is about a known common pattern.
 
@@ -54,6 +43,17 @@ Prefer:
 - Official library/framework documentation
 - GitHub READMEs and release notes for the specific version in use (check `package.json`, `go.mod`, `Cargo.toml`, etc. for the version before searching)
 - RFCs or specs for protocol/standard questions
+
+## Step 4 — Cross-reference the global bibliography
+
+After fetching sources, read `$HISTORY_ROOT/bibliography.md` and check each fetched URL against existing entries. For each match:
+
+- Use the existing slug in your CITE tag — do not mint a new one. Consistent slugs are how influence counts accumulate correctly.
+- If the entry has an `Influence` count of 2 or more, annotate the SOURCE block: `(bib: cited N times across M projects)`. This signals a well-corroborated source across sessions.
+
+Do not read the bib before searching — this check runs after you have found your sources, to avoid anchoring your search on prior conclusions.
+
+If the bib file doesn't exist, skip silently.
 
 ## Step 5 — Relevance filter
 
