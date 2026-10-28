@@ -33,9 +33,20 @@ Use search to look by keyword rather than reading every file. Only read sections
 
 If local docs answer the question fully, stop here — do not go to the web.
 
-## Step 3 — Fall back to the web
+## Step 3 — Check the global bibliography
 
-If local docs don't answer the question (or don't exist), search the web. Use targeted queries — prefer official docs, changelogs, and RFCs over blog posts or Stack Overflow unless the question is about a known common pattern.
+Before searching the web, read `$HISTORY_ROOT/bibliography.md` and scan for slugs that match the topic. If a matching entry exists with `Type: official-docs` or `Type: academic`:
+
+- Re-cite the same slug and URL rather than re-fetching, unless the conclusion seems potentially stale (version-specific behavior, pricing, API response format, or a conclusion that references a specific date older than 6 months).
+- If re-citing without fetching, note in the SOURCE block: `(cited from global bibliography — not re-fetched)`.
+
+For all other types (`community-guide`, `github-issue-or-pr`, `news`, `pricing-tool`, `ci-artifact`), always fetch fresh — these sources change and get superseded.
+
+If the bib file doesn't exist or has no matching entry, proceed to Step 4.
+
+## Step 4 — Fall back to the web
+
+If neither local docs nor the bibliography answer the question, search the web. Use targeted queries — prefer official docs, changelogs, and RFCs over blog posts or Stack Overflow unless the question is about a known common pattern.
 
 When fetching a URL, read only the sections relevant to the question. Do not summarize the whole page.
 
@@ -44,7 +55,7 @@ Prefer:
 - GitHub READMEs and release notes for the specific version in use (check `package.json`, `go.mod`, `Cargo.toml`, etc. for the version before searching)
 - RFCs or specs for protocol/standard questions
 
-## Step 4 — Relevance filter
+## Step 5 — Relevance filter
 
 Before writing your report, mentally score each candidate finding: does it directly answer the question, or is it adjacent context? Keep only direct answers. Discard:
 
@@ -55,7 +66,7 @@ Before writing your report, mentally score each candidate finding: does it direc
 
 If you found nothing that directly answers the question, say so plainly — do not fill the gap with guesses or loosely related content.
 
-## Step 5 — Report
+## Step 6 — Report
 
 Structure your response as follows:
 
