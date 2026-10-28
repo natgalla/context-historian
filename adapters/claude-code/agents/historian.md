@@ -330,10 +330,35 @@ Maintained by the historian agent — do not edit manually.
 
 For each load-bearing slug this session:
 
-- **New slug** — append entry with `Influence: 1`, `Projects: <current-project>`, `Sessions: <today>`. Populate `Conclusion` from CITE-SUMMARY if present (leave blank if absent). A DECISION-SOURCE with no matching CITE is not eligible — skip it.
-- **Existing slug** — increment `Influence` count by 1. Append `<current-project>` to `Projects` if not already listed (idempotent). Append `<today>` to `Sessions` (idempotent). If no `Conclusion` is stored and a CITE-SUMMARY is present this session, add it (first-wins: never overwrite an existing conclusion).
+- **New slug** — append entry with `Influence: 1`, `Projects: <current-project>`, `Sessions: <today>`. Populate `Conclusion` from CITE-SUMMARY if present (leave blank if absent). Classify `Subject` and `Type` per the taxonomy below. A DECISION-SOURCE with no matching CITE is not eligible — skip it.
+- **Existing slug** — increment `Influence` count by 1. Append `<current-project>` to `Projects` if not already listed (idempotent). Append `<today>` to `Sessions` (idempotent). If no `Conclusion` is stored and a CITE-SUMMARY is present this session, add it (first-wins: never overwrite an existing conclusion). If `Subject` or `Type` is absent on the existing entry, classify and add it.
 
 After all upserts, re-sort entries by `Influence` count descending. Use first `Accessed` date descending as the tiebreaker. Only re-sort if at least one entry was written or updated this session.
+
+**Subject taxonomy** — pick the closest match based on the source content and conclusion:
+
+| Value | Covers |
+|---|---|
+| `agentic-ai` | LLM platforms, RAG, classifiers, agents, Claude Code patterns, multi-agent systems |
+| `mobile-react-native` | Expo, React Native, iOS/Android platform, native dependencies |
+| `payments-iap` | App Store IAP, Google Play Billing, RevenueCat, Stripe |
+| `security` | CVEs, auth standards, vulnerability remediation, NIST, OSV |
+| `domain-knowledge` | Project-specific domain content (e.g. GT7 tuning) with no cross-project applicability |
+| `platform-integration` | External APIs and platforms: BambooHR, Discord, Slack, etc. |
+| `engineering-practice` | Code review patterns, CI/CD, ADRs, tooling, testing methodology |
+
+**Type taxonomy** — classify by URL pattern and source character:
+
+| Value | When to use |
+|---|---|
+| `official-docs` | Vendor/platform documentation, SDK references, model cards on the vendor's own domain (huggingface.co, docs.*, developer.*, *.github.io) |
+| `academic` | Peer-reviewed papers — aclanthology.org, arxiv.org, published journals |
+| `github-repo` | GitHub repo file contents, releases pages — github.com/*/*/blob/*, github.com/*/*/releases, raw.githubusercontent.com |
+| `github-issue-or-pr` | GitHub issues, PRs, discussions — github.com/*/*/issues/*, /pull/*, /discussions/* |
+| `community-guide` | Forums, blog posts, unofficial guides, dev.to, community wikis, vendor community sites |
+| `ci-artifact` | CI run URLs, build log links — github.com/*/actions/runs/* |
+| `pricing-tool` | Third-party pricing calculators and cost comparison tools |
+| `news` | News articles, engineering blog posts from tech companies, vendor marketing pages |
 
 Global entry format:
 ```markdown
@@ -341,6 +366,8 @@ Global entry format:
 
 - **Source:** <url or file path>
 - **Accessed:** <first-seen date>
+- **Subject:** <subject value>
+- **Type:** <type value>
 - **Conclusion:** <one sentence from CITE-SUMMARY>  ← blank if no CITE-SUMMARY ever recorded
 - **Influence:** <N> decisions across <M> projects
 - **Projects:** <name>[, ...]
